@@ -30,7 +30,7 @@ class JWTAuthFilter(
         if (authHeader == null || !authHeader.startsWith("Bearer")) return
         // removing the bearer
         val token = authHeader.substring(7)
-        val userId = tokenManager.validateToken(token) ?: return
+        val (userId, _) = tokenManager.validateToken(token) ?: return
         val user = repository.findUserById(userId.toLong()) ?: return
         val newAuth = UsernamePasswordAuthenticationToken.authenticated(
             user,

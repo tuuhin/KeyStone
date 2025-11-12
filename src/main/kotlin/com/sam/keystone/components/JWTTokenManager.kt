@@ -14,12 +14,9 @@ import java.security.interfaces.RSAPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import kotlin.io.encoding.Base64
-import kotlin.time.Clock
-import kotlin.time.Duration
+import kotlin.time.*
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.ExperimentalTime
-import kotlin.time.toJavaInstant
 
 @Component
 class JWTTokenManager(
@@ -65,21 +62,30 @@ class JWTTokenManager(
         )
     }
 
-    fun validateToken(token: String, type: JWTTokenType = JWTTokenType.ACCESS_TOKEN): Int? {
+    @OptIn(ExperimentalTime::class)
+    fun validateToken(token: String, type: JWTTokenType = JWTTokenType.ACCESS_TOKEN): Pair<Long, Duration>? {
         return try {
-            val claims = JWT.require(_algorithm).build().verify(token).claims
+            val decoded = JWT.require(_algorithm).build().verify(token)
+            val expireDuration = decoded.expiresAtAsInstant.toKotlinInstant() - Clock.System.now()
 
+            if (expireDuration.isNegative()) return null
+
+            val claims = decoded.claims
             val userIdClaim = claims.getOrDefault(JWT_CLAIM_USER_ID, null)
             val typeClaim = claims.getOrDefault(JWT_CLAIM_TOKEN_TYPE, null)
 
-            if (typeClaim.asString() == type.name) userIdClaim?.asInt() else null
+            if (typeClaim.asString() == type.name) userIdClaim.asLong() to expireDuration else null
         } catch (_: Exception) {
             null
         }
     }
 
     @OptIn(ExperimentalTime::class)
-    private fun generateToken(user: User, duration: Duration, type: JWTTokenType = JWTTokenType.ACCESS_TOKEN): String {
+    private fun generateToken(
+        user: User,
+        duration: Duration,
+        type: JWTTokenType = JWTTokenType.ACCESS_TOKEN,
+    ): String {
 
         val now = Clock.System.now()
         val expiry = now.plus(duration)

@@ -41,6 +41,9 @@ dependencies {
     implementation("org.bouncycastle:bcprov-jdk18on:1.82")
     implementation("com.auth0:java-jwt:4.5.0")
 
+    // redis
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
     // spring test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
