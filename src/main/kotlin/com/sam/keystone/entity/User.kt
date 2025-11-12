@@ -5,7 +5,10 @@ import java.time.LocalDateTime
 
 
 @Entity
-@Table(name = "users_table")
+@Table(
+    name = "users_table",
+    indexes = [Index(name = "user_name", unique = true, columnList = "user_name")]
+)
 class User(
 
     @Id
@@ -22,8 +25,11 @@ class User(
     @Column(name = "user_name", nullable = false, unique = true)
     val userName: String,
 
-    @Column(nullable = false, name = "created_at")
+    @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
+
+    @Column(name = "is_verified", nullable = false)
+    var isVerified: Boolean = false,
 
     @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, optional = true)
     var profile: UserProfile? = null,

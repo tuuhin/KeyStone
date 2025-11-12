@@ -11,7 +11,7 @@ class TokenBlackListManager(private val template: StringRedisTemplate) {
     @Synchronized
     fun addToBlackList(token: String, expiry: Duration) {
         val operation = template.opsForValue()
-        operation.set("$KEY_PREFIX:$token", "token", expiry.toJavaDuration())
+        operation.set("$KEY_PREFIX:$token", "revoked", expiry.toJavaDuration())
     }
 
     @Synchronized

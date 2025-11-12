@@ -31,18 +31,22 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     // db
+    implementation("org.flywaydb:flyway-core")
     runtimeOnly("org.hibernate.orm:hibernate-community-dialects")
     runtimeOnly("org.xerial:sqlite-jdbc:3.45.3.0")
 
     // swagger docs
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
-
     // jwts
     implementation("org.bouncycastle:bcprov-jdk18on:1.82")
     implementation("com.auth0:java-jwt:4.5.0")
-
     // redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    //emails
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("com.sendgrid:sendgrid-java:4.10.3")
+    // templating
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 
     // spring test
     testImplementation("org.springframework.boot:spring-boot-starter-test")

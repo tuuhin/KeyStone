@@ -1,7 +1,9 @@
 package com.sam.keystone.services
 
+import com.sam.keystone.components.EmailManager
 import com.sam.keystone.components.JWTTokenManager
 import com.sam.keystone.components.TokenBlackListManager
+import com.sam.keystone.components.UsersTokenManager
 import com.sam.keystone.dto.request.LoginUserRequest
 import com.sam.keystone.dto.request.RefreshTokenRequest
 import com.sam.keystone.dto.request.RegisterUserRequest
@@ -22,16 +24,15 @@ class UsersService(
     private val passwordEncoder: PasswordEncoder,
     private val tokenManager: JWTTokenManager,
     private val blackListManager: TokenBlackListManager,
+    private val usersTokenManager: UsersTokenManager,
+    private val emailManager: EmailManager,
 ) {
 
     @Transactional
-    fun createNewUser(request: RegisterUserRequest): TokenResponseDto {
-        // check for errors
-        if (repository.findUserByEmail(request.email) != null)
-            throw UserValidationException("Email Id is already taken")
+    fun createNewUser(request: RegisterUserRequest): User {
+        val probableUser = repository.findUserByUserName(request.userName)
 
-        if (repository.findUserByUserName(request.userName) != null)
-            throw UserValidationException("User name is already taken")
+        if (probableUser != null) throw UserValidationException("User name is already taken")
 
         // now we can create a user
         val encoded = passwordEncoder.encode(request.password)
@@ -41,27 +42,42 @@ class UsersService(
         val userWithProfile = newUser.apply { profile = newProfile }
 
         val user = repository.save(userWithProfile)
-        // so the user exists
-        return tokenManager.generateTokenPairs(user)
+        // user created
+        val createToken = usersTokenManager.prepareTokenForUser(user.id)
+        emailManager.sendVerificationEmailHtml(user, createToken)
+        return user
     }
 
 
     @Transactional
     fun loginUser(request: LoginUserRequest): TokenResponseDto {
-
-        if (request.email == null && request.userName == null)
-            throw UserValidationException("Both username and email cannot be null")
-
-        val user = if (request.email != null) repository.findUserByEmail(request.email)
-        else repository.findUserByUserName(request.userName!!)
+        val user = repository.findUserByUserName(request.userName)
 
         val foundUser = user ?: throw UserAuthException("Cannot find the given user")
+
+        if (!foundUser.isVerified) throw UserAuthException("User not verified, required verification before use")
 
         val passwordSame = passwordEncoder.matches(request.password, foundUser.pWordHash)
         if (!passwordSame) throw UserAuthException("Invalid password")
         // so the user exists
         return tokenManager.generateTokenPairs(foundUser)
     }
+
+    @Transactional
+    fun verifyRegisterToken(token: String): User {
+        val userId = usersTokenManager.validateToken(token)
+            ?: throw UserValidationException("Cannot verify the given token")
+
+        val user = repository.findUserById(userId)
+            ?: throw UserValidationException("Cannot find the associated user")
+
+        // delete the tokens
+        usersTokenManager.removeTokens(user.id)
+
+        val updatedUser = user.apply { isVerified = true }
+        return repository.save(updatedUser)
+    }
+
 
     fun generateNewTokenPairs(request: RefreshTokenRequest, currentUser: User): TokenResponseDto {
         val (userId, expireAfter) = tokenManager.validateToken(request.token, type = JWTTokenType.REFRESH_TOKEN)

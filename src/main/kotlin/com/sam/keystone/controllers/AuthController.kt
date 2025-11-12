@@ -4,6 +4,7 @@ import com.sam.keystone.dto.request.LoginUserRequest
 import com.sam.keystone.dto.request.RefreshTokenRequest
 import com.sam.keystone.dto.request.RegisterUserRequest
 import com.sam.keystone.dto.response.ErrorResponseDto
+import com.sam.keystone.dto.response.MessageResponseDto
 import com.sam.keystone.dto.response.TokenResponseDto
 import com.sam.keystone.dto.response.UserResponseDto
 import com.sam.keystone.entity.User
@@ -34,21 +35,14 @@ class AuthController(
 ) {
 
     @PostMapping("/register")
-    @Operation(summary = "Creates a new user from the given credentials and prepares a new token pair")
+    @Operation(summary = "Creates a new user from the given credentials and send a verification mail")
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "New token pair created successfully",
+                description = "Email has been successfully send",
                 content = [
-                    Content(mediaType = "application/json", schema = Schema(TokenResponseDto::class)),
-                ]
-            ),
-            ApiResponse(
-                responseCode = "403",
-                description = "Unauthenticated user",
-                content = [
-                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                    Content(mediaType = "application/json", schema = Schema(MessageResponseDto::class)),
                 ]
             ),
             ApiResponse(
@@ -60,11 +54,12 @@ class AuthController(
             ),
         ]
     )
-    fun registerUser(@RequestBody request: RegisterUserRequest): ResponseEntity<TokenResponseDto> {
-        val newUser = service.createNewUser(request)
+    fun registerUser(@RequestBody request: RegisterUserRequest): ResponseEntity<MessageResponseDto> {
+        val user = service.createNewUser(request)
+        val response = MessageResponseDto("User created successfully, Check :${user.email} for verification")
         return ResponseEntity
             .status(HttpStatus.CREATED)
-            .body(newUser)
+            .body(response)
     }
 
     @PostMapping("/login")
@@ -101,7 +96,19 @@ class AuthController(
             .body(newUser)
     }
 
-    @GetMapping(name = "current_user")
+    @GetMapping("/verify")
+    @Operation(summary = "Verifies a the register user")
+    fun verifyUser(@RequestParam token: String): ResponseEntity<MessageResponseDto> {
+        service.verifyRegisterToken(token)
+
+        val response = MessageResponseDto("User is verified can continue to login")
+
+        return ResponseEntity.status(HttpStatus.OK)
+            .body(response)
+    }
+
+
+    @GetMapping("current_user")
     @SecurityRequirement(name = "Authorization")
     @Operation(summary = "Fetches the current authenticated user")
     @ApiResponses(

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Verify Your Email</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+<table width="100%" style="max-width: 600px; margin: auto; background-color: #fff; border-radius: 10px; padding: 25px;">
+    <tr>
+        <td style="text-align: center;">
+            <h2 style="color: #333;">Welcome to <span style="color: #007BFF;">Keystone</span></h2>
+            <p style="font-size: 15px; color: #444;">
+                Hi <span th:text="${userName}">User</span>, thanks for signing up! Please verify your email address by
+                clicking the button below.
+            </p>
+            <a th:href="${verifyLink}"
+               style="display:inline-block; background-color:#007BFF; color:#fff; padding:12px 24px; border-radius:6px; text-decoration:none; margin-top:20px;">
+                Verify My Email
+            </a>
+            <p style="margin-top:30px; font-size:13px; color:#777;">
+                If you didn’t sign up for Keystone, you can safely ignore this email.
+            </p>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
