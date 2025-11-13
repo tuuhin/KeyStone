@@ -7,6 +7,7 @@ fun User.toReposeDTO(): UserResponseDto = UserResponseDto(
     id = id,
     userName = userName,
     email = email,
+    isVerified = isVerified,
     createdAt = createdAt,
     bio = profile?.bio,
     avatarUrl = profile?.avatarUrl, fullName = profile?.fullName

@@ -10,8 +10,10 @@ import com.sam.keystone.dto.request.RegisterUserRequest
 import com.sam.keystone.dto.response.TokenResponseDto
 import com.sam.keystone.entity.User
 import com.sam.keystone.entity.UserProfile
+import com.sam.keystone.exceptions.TooManyRequestException
 import com.sam.keystone.exceptions.UserAuthException
 import com.sam.keystone.exceptions.UserValidationException
+import com.sam.keystone.exceptions.UserVerificationException
 import com.sam.keystone.models.JWTTokenType
 import com.sam.keystone.repository.UserRepository
 import jakarta.transaction.Transactional
@@ -34,48 +36,70 @@ class UsersService(
 
         if (probableUser != null) throw UserValidationException("User name is already taken")
 
-        // now we can create a user
-        val encoded = passwordEncoder.encode(request.password)
+        val hash = passwordEncoder.encode(request.password)
 
-        val newUser = User(email = request.email, pWordHash = encoded, userName = request.userName)
-        val newProfile = UserProfile(user = newUser)
-        val userWithProfile = newUser.apply { profile = newProfile }
+        val newUser = User(
+            email = request.email,
+            pWordHash = hash,
+            userName = request.userName,
+            isVerified = false
+        ).apply {
+            profile = UserProfile(user = this)
+        }
 
-        val user = repository.save(userWithProfile)
+        val user = repository.save(newUser)
         // user created
-        val createToken = usersTokenManager.prepareTokenForUser(user.id)
-        emailManager.sendVerificationEmailHtml(user, createToken)
+        val verificationToken = usersTokenManager.createVerificationToken(user.id)
+        emailManager.sendVerificationEmailHtml(user, verificationToken)
+
         return user
     }
 
 
     @Transactional
     fun loginUser(request: LoginUserRequest): TokenResponseDto {
+
         val user = repository.findUserByUserName(request.userName)
-
         val foundUser = user ?: throw UserAuthException("Cannot find the given user")
-
-        if (!foundUser.isVerified) throw UserAuthException("User not verified, required verification before use")
 
         val passwordSame = passwordEncoder.matches(request.password, foundUser.pWordHash)
         if (!passwordSame) throw UserAuthException("Invalid password")
+
+        if (!user.isVerified) throw UserVerificationException("User not verified")
+
         // so the user exists
         return tokenManager.generateTokenPairs(foundUser)
     }
 
     @Transactional
     fun verifyRegisterToken(token: String): User {
-        val userId = usersTokenManager.validateToken(token)
+        val userId = usersTokenManager.validateVerificationToken(token, deleteWhenDone = true)
             ?: throw UserValidationException("Cannot verify the given token")
 
         val user = repository.findUserById(userId)
             ?: throw UserValidationException("Cannot find the associated user")
 
-        // delete the tokens
-        usersTokenManager.removeTokens(user.id)
-
         val updatedUser = user.apply { isVerified = true }
         return repository.save(updatedUser)
+    }
+
+    @Transactional
+    fun resendEmail(request: LoginUserRequest) {
+        val user = repository.findUserByUserName(request.userName) ?: return
+
+        val passwordSame = passwordEncoder.matches(request.password, user.pWordHash)
+        if (!passwordSame) return
+
+        // so this is the correct user
+        if (user.isVerified) throw UserVerificationException("User is already verified")
+
+        if (usersTokenManager.isVerificationEmailLimitActive(user.id))
+            throw TooManyRequestException("Cannot resend email this soon try later")
+        // delete the earlier tokens
+        usersTokenManager.deleteUserTokens(user.id)
+
+        val verificationToken = usersTokenManager.createVerificationToken(user.id, setRateLimit = true)
+        emailManager.sendVerificationEmailHtml(user, verificationToken)
     }
 
 

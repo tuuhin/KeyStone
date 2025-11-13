@@ -107,6 +107,13 @@ class AuthController(
             .body(response)
     }
 
+    @PostMapping("/resend_email")
+    @Operation(summary = "Resends the email for user verification")
+    fun resendVerificationMail(@RequestBody loginUserRequest: LoginUserRequest): ResponseEntity<Any> {
+        service.resendEmail(loginUserRequest)
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+    }
+
 
     @GetMapping("current_user")
     @SecurityRequirement(name = "Authorization")

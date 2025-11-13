@@ -1,7 +1,7 @@
 package com.sam.keystone.entity
 
 import jakarta.persistence.*
-import java.time.LocalDateTime
+import java.time.Instant
 
 
 @Entity
@@ -26,11 +26,11 @@ class User(
     val userName: String,
 
     @Column(name = "created_at", nullable = false)
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: Instant = Instant.now(),
 
     @Column(name = "is_verified", nullable = false)
     var isVerified: Boolean = false,
 
-    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, optional = true)
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, optional = false)
     var profile: UserProfile? = null,
 )

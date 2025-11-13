@@ -13,6 +13,8 @@ import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.thymeleaf.context.Context
 import org.thymeleaf.spring6.SpringTemplateEngine
+import java.io.IOException
+import java.util.concurrent.CompletableFuture
 
 @Component
 class EmailManager(
@@ -31,7 +33,7 @@ class EmailManager(
     private val logger = LoggerFactory.getLogger(this::class.java)
 
     @Async
-    fun sendVerificationEmailHtml(user: User, verificationToken: String) {
+    fun sendVerificationEmailHtml(user: User, verificationToken: String): CompletableFuture<Boolean> {
         val subject = "Verify Your Email - Keystone"
 
         val verifyLink = "$appURI/verify?token=${verificationToken}"
@@ -51,7 +53,7 @@ class EmailManager(
         val composition = Mail(fromEmail, subject, toEmail, contentType)
 
         // send the mail finally
-        try {
+        return try {
             val sendGrid = SendGrid(sendGridApiKey)
 
             val request = Request().apply {
@@ -61,8 +63,12 @@ class EmailManager(
             }
             val response = sendGrid.api(request)
             logger.debug("SendGrid Response: ${response.statusCode}")
-        } catch (e: Exception) {
+            CompletableFuture.completedFuture(true)
+        } catch (e: IOException) {
             logger.error("Sendgrid response failed :${e.message}", e)
+            CompletableFuture.completedFuture(true)
+        } catch (e: Exception) {
+            CompletableFuture.failedFuture(e)
         }
     }
 

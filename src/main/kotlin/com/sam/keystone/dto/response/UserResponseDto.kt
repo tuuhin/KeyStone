@@ -1,7 +1,7 @@
 package com.sam.keystone.dto.response
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import java.time.LocalDateTime
+import java.time.Instant
 
 class UserResponseDto(
 
@@ -15,7 +15,10 @@ class UserResponseDto(
     val userName: String,
 
     @field:JsonProperty("created_at")
-    val createdAt: LocalDateTime,
+    val createdAt: Instant,
+
+    @field:JsonProperty("is_verified")
+    val isVerified: Boolean = false,
 
     @field:JsonProperty("bio")
     var bio: String? = null,
