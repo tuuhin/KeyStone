@@ -13,24 +13,24 @@ class User(
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
-    val id: Long = 0L,
+    @Column(name = "user_id", columnDefinition = "INTEGER")
+    var id: Long = 0L,
 
     @Column(name = "email", nullable = false)
-    val email: String,
+    val email: String = "",
 
     @Column(name = "p_word", nullable = false)
-    val pWordHash: String,
+    var pWordHash: String = "",
 
     @Column(name = "user_name", nullable = false, unique = true)
-    val userName: String,
+    var userName: String = "",
 
     @Column(name = "created_at", nullable = false)
-    val createdAt: Instant = Instant.now(),
+    var createdAt: Instant = Instant.now(),
 
-    @Column(name = "is_verified", nullable = false)
-    var isVerified: Boolean = false,
-
-    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, optional = false)
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], optional = false)
     var profile: UserProfile? = null,
+
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], optional = false)
+    var verifyState: UserVerifyInfo? = null,
 )

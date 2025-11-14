@@ -1,5 +1,5 @@
 CREATE TABLE users_table (
-    user_id BIGINT PRIMARY KEY,
+    user_id INTEGER PRIMARY KEY ,
     email VARCHAR(255) NOT NULL,
     p_word VARCHAR(255) NOT NULL,
     user_name VARCHAR(255) NOT NULL UNIQUE,
@@ -8,8 +8,8 @@ CREATE TABLE users_table (
 );
 
 CREATE TABLE users_profile (
-    profile_id BIGINT PRIMARY KEY,
-    user_id BIGINT NOT NULL UNIQUE,
+    profile_id INTEGER PRIMARY KEY ,
+    user_id INTEGER NOT NULL UNIQUE,
     bio VARCHAR(512),
     full_name VARCHAR(255),
     avatar_url VARCHAR(255),

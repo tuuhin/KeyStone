@@ -33,10 +33,13 @@ class EmailManager(
     private val logger = LoggerFactory.getLogger(this::class.java)
 
     @Async
-    fun sendVerificationEmailHtml(user: User, verificationToken: String): CompletableFuture<Boolean> {
+    fun sendVerificationEmailHtml(
+        user: User,
+        verificationToken: String,
+        verificationPath: String = "/auth/verify",
+    ): CompletableFuture<Boolean> {
         val subject = "Verify Your Email - Keystone"
-
-        val verifyLink = "$appURI/verify?token=${verificationToken}"
+        val verifyLink = "$appURI/$verificationPath?token=${verificationToken}"
         logger.debug(verifyLink)
 
         // Prepare template context
@@ -66,7 +69,7 @@ class EmailManager(
             CompletableFuture.completedFuture(true)
         } catch (e: IOException) {
             logger.error("Sendgrid response failed :${e.message}", e)
-            CompletableFuture.completedFuture(true)
+            CompletableFuture.completedFuture(false)
         } catch (e: Exception) {
             CompletableFuture.failedFuture(e)
         }

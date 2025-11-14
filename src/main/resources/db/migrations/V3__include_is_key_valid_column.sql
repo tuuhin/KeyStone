@@ -1,0 +1,1 @@
+ALTER TABLE user_verify_info_table ADD COLUMN is_key_valid BOOLEAN DEFAULT FALSE;

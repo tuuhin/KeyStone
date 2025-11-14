@@ -8,12 +8,12 @@ import org.springframework.web.bind.annotation.RestController
 
 
 @RestController
-@RequestMapping("/health")
-@Tag(name = "Health")
-class HealthController {
+@RequestMapping("/")
+@Tag(name = "Foundation")
+class FoundationController {
 
 
-    @GetMapping
+    @GetMapping("/health")
     @Operation(summary = "A indication that the server is working")
     fun healthStatus() = mapOf("status" to "Ok")
 }
