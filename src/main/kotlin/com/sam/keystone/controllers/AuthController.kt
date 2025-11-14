@@ -244,4 +244,32 @@ class AuthController(
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }
 
+    @DeleteMapping("/delete")
+    @SecurityRequirement(name = "Authorization")
+    @Operation(summary = "Delete the current authenticated user")
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "202", description = "User deleted successfully"),
+            ApiResponse(
+                responseCode = "403",
+                description = "Unauthenticated user",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Delete cannot be performed",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+        ]
+    )
+    fun deleteUser(auth: Authentication): ResponseEntity<MessageResponseDto> {
+        val authUser = auth.currentUser
+        registerLoginService.deleteUser(userId = authUser.id)
+        val message = MessageResponseDto(message = "User removed successfully")
+        return ResponseEntity.status(HttpStatus.OK).body(message)
+    }
 }

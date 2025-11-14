@@ -76,4 +76,10 @@ class AuthRegisterLoginService(
         return jwtTokenManager.generateTokenPairs(foundUser)
     }
 
+    @Transactional
+    fun deleteUser(userId: Long) {
+        val user = userRepository.findUserById(userId) ?: throw UserAuthException("User cannot be deleted")
+        userRepository.delete(user)
+    }
+
 }
