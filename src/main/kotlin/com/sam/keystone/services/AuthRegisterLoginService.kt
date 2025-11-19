@@ -54,7 +54,7 @@ class AuthRegisterLoginService(
         val user = userRepository.save(newUser)
         // user created
         val verificationToken = usersTokenManager.createVerificationToken(user.id)
-        emailManager.sendVerificationEmailHtml(user, verificationToken, "/auth/verify")
+        emailManager.sendVerificationEmailHtml(user, verificationToken, "auth/verify")
         return RegisterUserResponseDto(user = user.toReposeDTO(), resendToken = randomToken)
     }
 

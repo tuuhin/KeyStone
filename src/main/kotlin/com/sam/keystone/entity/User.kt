@@ -1,5 +1,6 @@
 package com.sam.keystone.entity
 
+import com.sam.keystone.models.UserRole
 import jakarta.persistence.*
 import java.time.Instant
 
@@ -27,6 +28,10 @@ class User(
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
+
+    @Column(name = "role", nullable = false)
+    @Enumerated(value = EnumType.STRING)
+    val role: UserRole = UserRole.USER,
 
     @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], optional = false)
     var profile: UserProfile? = null,

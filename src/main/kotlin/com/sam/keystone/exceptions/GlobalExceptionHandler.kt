@@ -54,7 +54,6 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun handleGenericException(ex: Exception, request: HttpServletRequest): ResponseEntity<ErrorResponseDto> {
-        ex.printStackTrace()
         val response = ErrorResponseDto(
             message = ex.message ?: "Internal server error",
             error = "Server Error",

@@ -156,7 +156,6 @@ class AuthController(
     )
     fun resendVerificationMail(@RequestBody request: ResendEmailRequest): ResponseEntity<Any> {
         authVerifyService.resendEmail(request)
-        HttpStatus.TOO_MANY_REQUESTS
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }
 
