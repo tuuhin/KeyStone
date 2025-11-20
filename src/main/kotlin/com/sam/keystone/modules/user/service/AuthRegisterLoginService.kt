@@ -19,6 +19,7 @@ import com.sam.keystone.modules.user.utils.mappers.toReposeDTO
 import jakarta.transaction.Transactional
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import java.net.URLEncoder
 
 @Service
 class AuthRegisterLoginService(
@@ -54,7 +55,8 @@ class AuthRegisterLoginService(
         val user = userRepository.save(newUser)
         // user created
         val verificationToken = usersTokenManager.createVerificationToken(user.id)
-        emailSender.sendUserVerificationEmail(user, verificationToken)
+        val encodedToken = URLEncoder.encode(verificationToken, Charsets.UTF_8)
+        emailSender.sendUserVerificationEmail(user, encodedToken)
         return RegisterUserResponseDto(user = user.toReposeDTO(), resendToken = randomToken)
     }
 

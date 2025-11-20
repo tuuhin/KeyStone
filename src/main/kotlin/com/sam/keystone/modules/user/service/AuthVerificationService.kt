@@ -12,13 +12,14 @@ import com.sam.keystone.modules.user.repository.UserRepository
 import com.sam.keystone.modules.user.repository.UserVerificationRepository
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+import java.net.URLEncoder
 
 @Service
 class AuthVerificationService(
     private val usersTokenManager: UserVerificationTokenManager,
     private val userRepository: UserRepository,
     private val emailVerifyRepository: UserVerificationRepository,
-    private val emailManager: EmailSenderService,
+    private val emailSender: EmailSenderService,
     private val tokenGenerator: RandomTokenGeneratorConfig,
 ) {
 
@@ -59,6 +60,7 @@ class AuthVerificationService(
         usersTokenManager.deleteUserTokens(user.id)
 
         val verificationToken = usersTokenManager.createVerificationToken(user.id, setRateLimit = true)
-        emailManager.sendUserVerificationEmail(user, verificationToken)
+        val encodedToken = URLEncoder.encode(verificationToken, Charsets.UTF_8)
+        emailSender.sendUserVerificationEmail(user, encodedToken)
     }
 }

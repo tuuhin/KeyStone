@@ -32,11 +32,11 @@ class JWTAuthFilterConfig(
         // removing the bearer
         val token = authHeader.substring(7)
         val (userId, _) = jwtTokenService.validateToken(token) ?: return
-        val user = repository.findUserById(userId.toLong()) ?: return
+        val user = repository.findUserById(userId) ?: return
         val newAuth = UsernamePasswordAuthenticationToken.authenticated(
             user,
             null,
-            listOf(SimpleGrantedAuthority("USER"))
+            listOf(SimpleGrantedAuthority(user.role.name))
         )
         SecurityContextHolder.getContext().authentication = newAuth
     }

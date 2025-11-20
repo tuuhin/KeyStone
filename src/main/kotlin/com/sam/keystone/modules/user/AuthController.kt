@@ -9,8 +9,6 @@ import com.sam.keystone.modules.user.dto.request.ResendEmailRequest
 import com.sam.keystone.modules.user.dto.response.RegisterUserResponseDto
 import com.sam.keystone.modules.user.dto.response.TokenResponseDto
 import com.sam.keystone.modules.user.dto.response.UserResponseDto
-import com.sam.keystone.modules.user.entity.User
-import com.sam.keystone.modules.user.exceptions.UserAuthException
 import com.sam.keystone.modules.user.service.AuthRegisterLoginService
 import com.sam.keystone.modules.user.service.AuthTokenManagementService
 import com.sam.keystone.modules.user.service.AuthVerificationService
@@ -25,7 +23,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.security.core.Authentication
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -184,10 +182,10 @@ class AuthController(
             ),
         ]
     )
-    fun getCurrentUser(auth: Authentication): ResponseEntity<UserResponseDto> {
-        val user = auth.principal as? User
-        val response = user?.toReposeDTO() ?: throw UserAuthException("No user found")
-        return ResponseEntity.status(HttpStatus.OK).body(response)
+    fun getCurrentUser(): ResponseEntity<UserResponseDto> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userDTO = auth.currentUser.toReposeDTO()
+        return ResponseEntity.status(HttpStatus.OK).body(userDTO)
     }
 
 
@@ -212,10 +210,8 @@ class AuthController(
             ),
         ]
     )
-    fun refreshToken(
-        @RequestBody request: RefreshTokenRequest,
-        auth: Authentication,
-    ): ResponseEntity<TokenResponseDto> {
+    fun refreshToken(@RequestBody request: RefreshTokenRequest): ResponseEntity<TokenResponseDto> {
+        val auth = SecurityContextHolder.getContext().authentication
         val newUser = tokenManagementService.handleRefreshTokenRequest(request, auth.currentUser)
         return ResponseEntity
             .status(HttpStatus.OK)
@@ -238,9 +234,9 @@ class AuthController(
             ),
         ]
     )
-    fun logoutUser(@RequestBody request: RefreshTokenRequest, auth: Authentication): ResponseEntity<Any> {
-        // no authenticated used
-        if (auth.principal !is User) throw UserAuthException("No authenticated user")
+    fun logoutUser(@RequestBody request: RefreshTokenRequest): ResponseEntity<Any> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val authUser = auth.currentUser
 
         tokenManagementService.blackListToken(request)
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
@@ -268,7 +264,8 @@ class AuthController(
             ),
         ]
     )
-    fun deleteUser(auth: Authentication): ResponseEntity<MessageResponseDto> {
+    fun deleteUser(): ResponseEntity<MessageResponseDto> {
+        val auth = SecurityContextHolder.getContext().authentication
         val authUser = auth.currentUser
         registerLoginService.deleteUser(userId = authUser.id)
         val message = MessageResponseDto(message = "User removed successfully")

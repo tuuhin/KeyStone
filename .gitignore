@@ -40,3 +40,4 @@ out/
 .kotlin
 /keystone.db
 *.pem
+secrets.properties

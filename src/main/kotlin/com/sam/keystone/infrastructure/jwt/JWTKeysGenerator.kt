@@ -10,6 +10,8 @@ import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import java.time.Instant
+import java.util.*
 import kotlin.io.encoding.Base64
 import kotlin.time.*
 
@@ -57,8 +59,20 @@ class JWTKeysGenerator(
         val tokenGenerated = JWT.create()
             .withAudience(jwtAudience)
             .withIssuer(jwtIssuer)
-            .withPayload(claims)
             .withExpiresAt(expiry.toJavaInstant())
+
+        for ((key, value) in claims) {
+            when (value) {
+                is Int -> tokenGenerated.withClaim(key, value)
+                is Double -> tokenGenerated.withClaim(key, value)
+                is Long -> tokenGenerated.withClaim(key, value)
+                is String -> tokenGenerated.withClaim(key, value)
+                is Date -> tokenGenerated.withClaim(key, value)
+                is Instant -> tokenGenerated.withClaim(key, value)
+                is List<*> -> tokenGenerated.withClaim(key, value)
+                is Boolean -> tokenGenerated.withClaim(key, value)
+            }
+        }
 
         return tokenGenerated.sign(_algorithm)
     }

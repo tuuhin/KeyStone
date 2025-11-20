@@ -26,19 +26,11 @@ class JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
 
         val accessToken = generator.generateToken(
             timeToLive = accessTokenDuration,
-            claims = mapOf(
-                JWT_CLAIM_USER_NAME to user.userName,
-                JWT_CLAIM_USER_ID to user.id,
-                JWT_CLAIM_TOKEN_TYPE to JWTTokenType.ACCESS_TOKEN
-            )
+            claims = prepareClaims(user, JWTTokenType.ACCESS_TOKEN)
         )
         val refreshToken = generator.generateToken(
             timeToLive = refreshTokenDuration,
-            claims = mapOf(
-                JWT_CLAIM_USER_NAME to user.userName,
-                JWT_CLAIM_USER_ID to user.id,
-                JWT_CLAIM_TOKEN_TYPE to JWTTokenType.REFRESH_TOKEN
-            )
+            claims = prepareClaims(user, JWTTokenType.REFRESH_TOKEN)
         )
 
         return TokenResponseDto(
@@ -60,6 +52,12 @@ class JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
             null
         }
     }
+
+    private fun prepareClaims(user: User, tokenType: JWTTokenType) = mapOf(
+        JWT_CLAIM_USER_NAME to user.userName,
+        JWT_CLAIM_USER_ID to user.id,
+        JWT_CLAIM_TOKEN_TYPE to tokenType.name
+    )
 
     companion object {
         private const val JWT_CLAIM_USER_NAME = "user_name"
