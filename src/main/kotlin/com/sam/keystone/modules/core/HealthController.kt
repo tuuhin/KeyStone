@@ -1,0 +1,18 @@
+package com.sam.keystone.modules.core
+
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+
+@RestController
+@RequestMapping("/")
+@Tag(name = "Foundation")
+class HealthController {
+
+
+    @GetMapping("/health")
+    @Operation(summary = "A indication that the server is working")
+    fun healthStatus() = mapOf("status" to "Ok")
+}
