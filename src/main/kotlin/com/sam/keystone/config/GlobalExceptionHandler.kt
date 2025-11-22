@@ -2,8 +2,6 @@ package com.sam.keystone.config
 
 import com.sam.keystone.modules.core.dto.ErrorResponseDto
 import com.sam.keystone.modules.core.exceptions.TooManyRequestException
-import com.sam.keystone.modules.oauth2.exceptions.ClientNotFoundException
-import com.sam.keystone.modules.oauth2.exceptions.InvalidAuthorizeParmsException
 import com.sam.keystone.modules.user.exceptions.UserAuthException
 import com.sam.keystone.modules.user.exceptions.UserValidationException
 import com.sam.keystone.modules.user.exceptions.UserVerificationException
@@ -56,32 +54,6 @@ class GlobalExceptionHandler {
             error = "User Verification"
         )
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
-    }
-
-    @ExceptionHandler(ClientNotFoundException::class)
-    fun handleClientNotFoundException(
-        ex: ClientNotFoundException,
-        request: HttpServletRequest,
-    ): ResponseEntity<ErrorResponseDto> {
-        val response = ErrorResponseDto(
-            message = ex.message ?: "",
-            error = "Client Not found exception",
-            path = request.requestURI
-        )
-        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(response)
-    }
-
-    @ExceptionHandler(InvalidAuthorizeParmsException::class)
-    fun handleAuthorizationParams(
-        ex: InvalidAuthorizeParmsException,
-        request: HttpServletRequest,
-    ): ResponseEntity<ErrorResponseDto> {
-        val response = ErrorResponseDto(
-            message = ex.message ?: "",
-            error = "Client Not found exception",
-            path = request.requestURI
-        )
-        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(response)
     }
 
     @ExceptionHandler(Exception::class)
