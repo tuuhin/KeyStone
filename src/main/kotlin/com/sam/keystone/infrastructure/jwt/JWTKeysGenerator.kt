@@ -51,7 +51,7 @@ class JWTKeysGenerator(
     }
 
     @OptIn(ExperimentalTime::class)
-    fun generateToken(timeToLive: Duration, claims: Map<String, Any> = emptyMap()): String {
+    fun generateToken(timeToLive: Duration, claims: Map<String, Any?> = emptyMap()): String {
 
         val now = Clock.System.now()
         val expiry = now.plus(timeToLive)
@@ -59,6 +59,7 @@ class JWTKeysGenerator(
         val tokenGenerated = JWT.create()
             .withAudience(jwtAudience)
             .withIssuer(jwtIssuer)
+            .withIssuedAt(Instant.now())
             .withExpiresAt(expiry.toJavaInstant())
 
         for ((key, value) in claims) {

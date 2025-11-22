@@ -2,17 +2,20 @@ package com.sam.keystone.modules.oauth2.services
 
 import com.sam.keystone.config.RandomTokenGeneratorConfig
 import com.sam.keystone.modules.core.dto.MessageResponseDto
+import com.sam.keystone.modules.oauth2.dto.OAuth2ClientListResponseDto
 import com.sam.keystone.modules.oauth2.dto.OAuth2ClientResponseDto
-import com.sam.keystone.modules.oauth2.dto.OAuth2ClientsResponseDto
 import com.sam.keystone.modules.oauth2.dto.RegisterClientRequestDto
 import com.sam.keystone.modules.oauth2.dto.RegisterClientResponseDto
 import com.sam.keystone.modules.oauth2.exceptions.ClientNotFoundException
+import com.sam.keystone.modules.oauth2.exceptions.RegisterClientValidationFailedException
 import com.sam.keystone.modules.oauth2.mappers.toDto
 import com.sam.keystone.modules.oauth2.mappers.toEntity
 import com.sam.keystone.modules.oauth2.repository.OAuth2ClientRepository
 import com.sam.keystone.modules.user.entity.User
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+import java.net.URI
+import java.net.URISyntaxException
 
 @Service
 class OAuth2ClientService(
@@ -22,8 +25,17 @@ class OAuth2ClientService(
     @Transactional
     fun createNewClient(request: RegisterClientRequestDto, user: User): RegisterClientResponseDto {
 
-        val clientId = tokenGenerator.generateRandomToken(32)
-        val clientSecret = tokenGenerator.generateRandomToken(32)
+        // check request validity
+        request.redirectURLs.forEach { url ->
+            try {
+                URI(url)
+            } catch (_: URISyntaxException) {
+                throw RegisterClientValidationFailedException("Failed to validate redirect uri :$url")
+            }
+        }
+
+        val clientId = tokenGenerator.generateRandomToken(16)
+        val clientSecret = tokenGenerator.generateRandomToken(16)
         val secretHash = tokenGenerator.hashToken(clientSecret)
 
         val entity = request.toEntity(clientId = clientId, clientSecretHash = secretHash, user = user)
@@ -36,14 +48,14 @@ class OAuth2ClientService(
         )
     }
 
-    fun fetchUsersClientList(user: User): OAuth2ClientsResponseDto {
+    fun fetchAllClientsAssociatedToUser(user: User): OAuth2ClientListResponseDto {
         val clients = repository.findOAuth2ClientEntitiesByUser(user)
             .map { it.toDto() }
             .toSet()
-        return OAuth2ClientsResponseDto(clients)
+        return OAuth2ClientListResponseDto(clients)
     }
 
-    fun fetchClientInfo(clientId: String, user: User): OAuth2ClientResponseDto {
+    fun fetchClientWithClientIdAndUser(clientId: String, user: User): OAuth2ClientResponseDto {
         val entity = repository.findOAuth2ClientEntityByClientIdAndUser(clientId, user)
             ?: throw ClientNotFoundException(clientId)
         return entity.toDto()
@@ -69,7 +81,7 @@ class OAuth2ClientService(
         val entity = repository.findOAuth2ClientEntityByClientIdAndUser(clientId, user)
             ?: throw ClientNotFoundException(clientId)
 
-        val clientSecret = tokenGenerator.generateRandomToken(32)
+        val clientSecret = tokenGenerator.generateRandomToken(16)
         val secretHash = tokenGenerator.hashToken(clientSecret)
 
         val updated = entity.also { it.secretHash = secretHash }

@@ -15,4 +15,7 @@ data class RegisterClientRequestDto(
 
     @field:JsonProperty(value = "grant_type")
     val grantType: Set<String> = emptySet(),
+
+    @field:JsonProperty("allow_refresh_tokens")
+    val refreshTokens: Boolean = true,
 )

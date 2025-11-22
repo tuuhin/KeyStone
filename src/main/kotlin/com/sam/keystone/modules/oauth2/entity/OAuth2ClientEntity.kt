@@ -58,6 +58,9 @@ class OAuth2ClientEntity(
 
     @Column(name = "updated_at")
     var updatedAt: Instant = Instant.now(),
+
+    @Column(name = "allow_refresh_tokens")
+    val allowRefreshTokens: Boolean = false,
 ) {
 
     @PreUpdate

@@ -2,8 +2,8 @@ package com.sam.keystone.modules.oauth2
 
 import com.sam.keystone.modules.core.dto.ErrorResponseDto
 import com.sam.keystone.modules.core.dto.MessageResponseDto
+import com.sam.keystone.modules.oauth2.dto.OAuth2ClientListResponseDto
 import com.sam.keystone.modules.oauth2.dto.OAuth2ClientResponseDto
-import com.sam.keystone.modules.oauth2.dto.OAuth2ClientsResponseDto
 import com.sam.keystone.modules.oauth2.dto.RegisterClientRequestDto
 import com.sam.keystone.modules.oauth2.dto.RegisterClientResponseDto
 import com.sam.keystone.modules.oauth2.services.OAuth2ClientService
@@ -66,7 +66,7 @@ class OAuth2ManagementController(
                 responseCode = "200",
                 description = "List clients register by the user",
                 content = [
-                    Content(mediaType = "application/json", schema = Schema(OAuth2ClientsResponseDto::class)),
+                    Content(mediaType = "application/json", schema = Schema(OAuth2ClientListResponseDto::class)),
                 ]
             ),
             ApiResponse(
@@ -78,9 +78,9 @@ class OAuth2ManagementController(
             ),
         ]
     )
-    fun listAllClients(): ResponseEntity<OAuth2ClientsResponseDto> {
+    fun listAllClients(): ResponseEntity<OAuth2ClientListResponseDto> {
         val currentUser = SecurityContextHolder.getContext().authentication.currentUser
-        val clientResponse = service.fetchUsersClientList(currentUser)
+        val clientResponse = service.fetchAllClientsAssociatedToUser(currentUser)
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(clientResponse)
     }
@@ -114,7 +114,7 @@ class OAuth2ManagementController(
     )
     fun clientDetails(@PathVariable clientId: String): ResponseEntity<OAuth2ClientResponseDto> {
         val currentUser = SecurityContextHolder.getContext().authentication.currentUser
-        val clientResponse = service.fetchClientInfo(clientId, currentUser)
+        val clientResponse = service.fetchClientWithClientIdAndUser(clientId, currentUser)
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(clientResponse)
     }

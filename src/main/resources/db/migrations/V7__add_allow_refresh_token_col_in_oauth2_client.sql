@@ -1,0 +1,1 @@
+ALTER TABLE oauth_2_client_table ADD COLUMN allow_refresh_tokens BOOLEAN DEFAULT TRUE;
