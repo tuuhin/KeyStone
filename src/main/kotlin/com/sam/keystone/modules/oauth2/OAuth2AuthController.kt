@@ -1,20 +1,23 @@
 package com.sam.keystone.modules.oauth2
 
+import com.nimbusds.jose.jwk.JWKSet
 import com.sam.keystone.modules.core.dto.ErrorResponseDto
-import com.sam.keystone.modules.oauth2.dto.OAuth2AuthorizationResponse
-import com.sam.keystone.modules.oauth2.dto.OAuth2TokenResponseDto
+import com.sam.keystone.modules.oauth2.dto.*
 import com.sam.keystone.modules.oauth2.models.CodeChallengeMethods
 import com.sam.keystone.modules.oauth2.models.OAuth2ResponseType
 import com.sam.keystone.modules.oauth2.services.OAuth2AuthService
+import com.sam.keystone.modules.oauth2.services.OAuth2TokenService
+import com.sam.keystone.modules.user.utils.ext.currentUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -24,15 +27,18 @@ import org.springframework.web.bind.annotation.*
     description = "OAuth client authentication and authorization"
 )
 class OAuth2AuthController(
-    private val service: OAuth2AuthService,
+    private val authService: OAuth2AuthService,
+    private val tokenService: OAuth2TokenService,
+    private val jwkSet: JWKSet,
 ) {
 
     @GetMapping("/authorize")
+    @ResponseStatus(HttpStatus.OK)
     @Operation(summary = "Authorize a client")
     @ApiResponses(
         value = [
             ApiResponse(
-                responseCode = "201",
+                responseCode = "200",
                 description = "Authorization Code is created successfully",
                 content = [
                     Content(mediaType = "application/json", schema = Schema(OAuth2AuthorizationResponse::class)),
@@ -82,9 +88,9 @@ class OAuth2AuthController(
         codeChallengeMethod: CodeChallengeMethods,
         @RequestParam(value = "state", required = false)
         state: String,
-    ): ResponseEntity<OAuth2AuthorizationResponse> {
+    ): OAuth2AuthorizationResponse {
 
-        val response = service.createTokenAndStorePKCE(
+        val response = authService.createTokenAndStorePKCE(
             responseType = responseType,
             clientId = clientId,
             redirectURI = redirectUri,
@@ -94,13 +100,12 @@ class OAuth2AuthController(
             challengeCodeMethod = codeChallengeMethod,
         )
 
-        val responseWithState = response.copy(state = state)
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseWithState)
+        return response.copy(state = state)
     }
 
 
     @PostMapping("/token")
+    @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Creates a new token to use")
     @ApiResponses(
         value = [
@@ -144,9 +149,9 @@ class OAuth2AuthController(
         codeVerifier: String,
         @RequestParam(value = "state", required = false)
         state: String,
-    ): ResponseEntity<OAuth2TokenResponseDto> {
+    ): OAuth2TokenResponseDto {
 
-        val response = service.validateTokenRequest(
+        val response = authService.validateTokenRequest(
             clientId = clientId,
             clientSecret = clientSecret,
             redirect = redirectUri,
@@ -154,10 +159,137 @@ class OAuth2AuthController(
             authCode = code,
             codeVerifier = codeVerifier
         )
-
-        val updatedResponse = response.copy(state = state)
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(updatedResponse)
+        return response.copy(state = state)
     }
 
+    @PostMapping("/introspect")
+    @ResponseStatus(HttpStatus.OK)
+    @SecurityRequirement(name = "Authorization")
+    @Operation(summary = "validate a token (access or refresh) and get metadata about it.")
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Show information related to the given token",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(OAuth2TokenIntrospectResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Unauthenticated user",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Associate client don't have access",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Invalid parameters for the request body",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+        ]
+    )
+    fun introspectToken(@RequestBody request: OAuth2TokenRequestDto): OAuth2TokenIntrospectResponseDto {
+        val currentUser = SecurityContextHolder.getContext().authentication.currentUser
+        return tokenService.introspectToken(request, currentUser)
+    }
+
+
+    @PostMapping("/refresh")
+    @ResponseStatus(HttpStatus.CREATED)
+    @SecurityRequirement(name = "Authorization")
+    @Operation(summary = "Validate the given token and blacklist it and generate a new token pair")
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "201",
+                description = "New token pair created successfully",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(OAuth2TokenResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Unauthenticated user",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Associate client don't have access",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Invalid parameters for the request body",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+        ]
+    )
+    fun refreshToken(@RequestBody request: OAuth2RefreshTokenRequestDto): OAuth2TokenResponseDto {
+        val currentUser = SecurityContextHolder.getContext().authentication.currentUser
+        return tokenService.invalidateAndCreateNewToken(request, currentUser)
+    }
+
+
+    @PostMapping("/revoke")
+    @ResponseStatus(HttpStatus.OK)
+    @SecurityRequirement(name = "Authorization")
+    @Operation(summary = "Invalidate this token so it cannot be used anymore")
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Token revoked successfully",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(OAuth2RevokeResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Unauthenticated user",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Associate client don't have access",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Invalid parameters for the request body",
+                content = [
+                    Content(mediaType = "application/json", schema = Schema(implementation = ErrorResponseDto::class)),
+                ]
+            ),
+        ]
+    )
+    fun revokeToken(@RequestBody request: OAuth2TokenRequestDto): OAuth2RevokeResponseDto {
+        val currentUser = SecurityContextHolder.getContext().authentication.currentUser
+        return tokenService.revokeTokens(request, currentUser)
+    }
+
+
+    @GetMapping("/jwks")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Returns the JSON Web Key Set containing the public keys used by the authorization server")
+    fun showJWKS(): Map<String, Any> = jwkSet.toJSONObject()
 }

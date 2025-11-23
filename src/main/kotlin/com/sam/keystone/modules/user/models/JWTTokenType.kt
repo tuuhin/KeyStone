@@ -1,6 +1,6 @@
 package com.sam.keystone.modules.user.models
 
-enum class JWTTokenType {
-    ACCESS_TOKEN,
-    REFRESH_TOKEN
+enum class JWTTokenType(val simpleName: String) {
+    ACCESS_TOKEN("access_token"),
+    REFRESH_TOKEN("refresh_token")
 }

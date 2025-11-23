@@ -13,7 +13,10 @@ import java.security.spec.X509EncodedKeySpec
 import java.time.Instant
 import java.util.*
 import kotlin.io.encoding.Base64
-import kotlin.time.*
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
+import kotlin.time.toJavaInstant
 
 @Component
 class JWTKeysGenerator(
@@ -43,11 +46,12 @@ class JWTKeysGenerator(
     @OptIn(ExperimentalTime::class)
     fun validateToken(token: String): JWTValidationResult {
         val decoded = JWT.require(_algorithm).build().verify(token)
-        val expireDuration = decoded.expiresAtAsInstant.toKotlinInstant() - Clock.System.now()
 
-        if (expireDuration.isNegative()) throw JWTExpiredException()
-
-        return JWTValidationResult(claims = decoded.claims, tokenTTL = expireDuration)
+        return JWTValidationResult(
+            claims = decoded.claims,
+            tokenExpiryInstant = decoded.expiresAtAsInstant,
+            tokenCreateInstant = decoded.issuedAtAsInstant
+        )
     }
 
     @OptIn(ExperimentalTime::class)

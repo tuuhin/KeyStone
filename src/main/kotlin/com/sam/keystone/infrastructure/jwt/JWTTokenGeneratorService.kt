@@ -42,12 +42,13 @@ class JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
     @OptIn(ExperimentalTime::class)
     fun validateToken(token: String, type: JWTTokenType = JWTTokenType.ACCESS_TOKEN): Pair<Long, Duration>? {
         return try {
-            val (claims, ttl) = generator.validateToken(token)
+            val result = generator.validateToken(token)
+            if (result.isExpired) return null
 
-            val userId = claims.getOrDefault(JWT_CLAIM_USER_ID, null)?.asLong() ?: -1
-            val tokenTYpe = claims.getOrDefault(JWT_CLAIM_TOKEN_TYPE, null)
+            val userId = result.claims.getOrDefault(JWT_CLAIM_USER_ID, null)?.asLong() ?: -1
+            val tokenTYpe = result.claims.getOrDefault(JWT_CLAIM_TOKEN_TYPE, null)
 
-            if (tokenTYpe?.asString() == type.name) userId to ttl else null
+            if (tokenTYpe?.asString() == type.name) userId to result.tokenTTL else null
         } catch (_: Exception) {
             null
         }

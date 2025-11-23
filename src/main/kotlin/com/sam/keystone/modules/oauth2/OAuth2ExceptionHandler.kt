@@ -82,4 +82,24 @@ class OAuth2ExceptionHandler {
         )
     }
 
+
+    @ExceptionHandler(OAuth2UserException::class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    fun handleException(ex: OAuth2UserException, request: HttpServletRequest): ErrorResponseDto {
+        return ErrorResponseDto(
+            message = ex.message ?: "Invalid user",
+            error = "Oauth2 Error",
+            path = request.requestURI
+        )
+    }
+
+    @ExceptionHandler(OAuth2TokenInvalidException::class)
+    @ResponseStatus(HttpStatus.NOT_ACCEPTABLE)
+    fun handleException(ex: OAuth2TokenInvalidException, request: HttpServletRequest): ErrorResponseDto {
+        return ErrorResponseDto(
+            message = ex.message ?: "Invalid token",
+            error = "Oauth2 Error",
+            path = request.requestURI
+        )
+    }
 }

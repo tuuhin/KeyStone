@@ -59,10 +59,10 @@ class OAuth2AuthService(
         responseType: OAuth2ResponseType,
         clientId: String,
         redirectURI: String,
-        scope: String? = null,
-        grantType: String? = null,
         challengeCode: String,
         challengeCodeMethod: CodeChallengeMethods,
+        scope: String? = null,
+        grantType: String? = null,
     ): OAuth2AuthorizationResponse {
         if (responseType != OAuth2ResponseType.CODE) throw OAuth2InvalidResponseTypeException()
 
