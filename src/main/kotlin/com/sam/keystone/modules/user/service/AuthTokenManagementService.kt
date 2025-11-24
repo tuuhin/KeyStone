@@ -35,8 +35,8 @@ class AuthTokenManagementService(
     }
 
 
-    fun blackListToken(request: RefreshTokenRequest) {
-        val (_, expireAfter) = jwtTokenManager.validateToken(request.token, type = JWTTokenType.REFRESH_TOKEN)
+    fun blackListToken(request: RefreshTokenRequest, user: User) {
+        val (userId, expireAfter) = jwtTokenManager.validateToken(request.token, type = JWTTokenType.REFRESH_TOKEN)
             ?: throw UserAuthException("Refresh Token expired or invalid")
 
         // add the item to the blacklist so it cannot be used anymore

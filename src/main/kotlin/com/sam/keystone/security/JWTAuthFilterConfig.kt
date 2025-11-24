@@ -29,8 +29,10 @@ class JWTAuthFilterConfig(
     private fun addAuthorizedUser(request: HttpServletRequest) {
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer")) return
-        // removing the bearer
         val token = authHeader.substring(7)
+        // some kind of authentication is already provided
+        if (SecurityContextHolder.getContext().authentication != null) return
+        // removing the bearer
         val (userId, _) = jwtTokenService.validateToken(token) ?: return
         val user = repository.findUserById(userId) ?: return
         val newAuth = UsernamePasswordAuthenticationToken.authenticated(
