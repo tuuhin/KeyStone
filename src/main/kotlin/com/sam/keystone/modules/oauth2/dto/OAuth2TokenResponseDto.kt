@@ -9,6 +9,7 @@ data class OAuth2TokenResponseDto(
     @field:JsonProperty("expires_in") val expiry: Long = 0L,
     @field:JsonProperty("refresh_token") val refreshToken: String? = null,
     @field:JsonProperty("refresh_token_expiry") val refreshTokenExpiry: Long = 0L,
+    @field:JsonProperty("id_token") val oidcToken: String? = null,
     @field:JsonProperty("redirect_uri") val redirectURI: String? = null,
     @field:JsonProperty("scopes") val scopes: String? = null,
     @field:JsonProperty("created_at") val createdAt: Instant = Instant.now(),

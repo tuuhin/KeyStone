@@ -1,6 +1,7 @@
 package com.sam.keystone.infrastructure.redis
 
 import com.sam.keystone.modules.oauth2.models.AuthorizeTokenModel
+import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -10,6 +11,9 @@ import kotlin.time.toJavaDuration
 
 @Component
 class OAuth2AuthCodeStore(private val template: StringRedisTemplate) {
+
+    private val logger by lazy { LoggerFactory.getLogger(OAuth2AuthCodeStore::class.java) }
+
 
     @Transactional
     fun saveAuthTokenInfo(model: AuthorizeTokenModel, expiry: Duration = 5.minutes) {
@@ -27,6 +31,7 @@ class OAuth2AuthCodeStore(private val template: StringRedisTemplate) {
         }
         operation.expiration("$OAUTH2_CLIENT_ID:${model.clientId}")
             .expire(expiry.toJavaDuration())
+        logger.debug("SAVING AUTH TOKEN INFO KEY :$coreKey EXPIRY :$expiry")
     }
 
     @Transactional(readOnly = true)
@@ -38,7 +43,11 @@ class OAuth2AuthCodeStore(private val template: StringRedisTemplate) {
         val scopes = operation.get(coreKey, OAUTH2_TOKEN_SCOPES)
         val grantType = operation.get(coreKey, OAUTH2_TOKEN_GRANT_TYPES)
 
-        if (authCode == null || redirectURI == null) return null
+        if (authCode == null || redirectURI == null) {
+            logger.debug("CANNOT FIND AUTH TOKEN ENTRY :$coreKey")
+            return null
+        }
+        logger.debug("FOUND AUTH TOKEN ENTRY :$coreKey")
         return AuthorizeTokenModel(
             code = authCode,
             redirectURI = redirectURI,
@@ -59,10 +68,27 @@ class OAuth2AuthCodeStore(private val template: StringRedisTemplate) {
             OAUTH2_TOKEN_SCOPES,
             OAUTH2_TOKEN_GRANT_TYPES
         )
+        logger.debug("DELETING AUTH TOKEN ENTRY :$coreKey")
+    }
+
+    fun saveClientNonce(clientId: String, nonce: String, expiry: Duration = 2.minutes) {
+        val operation = template.opsForValue()
+        val key = "$OIDC_NONCE:$clientId"
+        operation.set(key, nonce, expiry.toJavaDuration())
+        logger.debug("SAVING NONCE FOR OIDC :$key")
+    }
+
+    fun getClientNonce(clientId: String): String? {
+        val operation = template.opsForValue()
+        val key = "$OIDC_NONCE:$clientId"
+        val result = operation.getAndDelete(key)
+        logger.debug("FOUND NONCE FOR OIDC :$key DELETING THIS NOW")
+        return result
     }
 
     companion object {
         private const val OAUTH2_CLIENT_ID = "oauth2:auth_code:client_id"
+        private const val OIDC_NONCE = "oidc:nonce:client_id"
 
         //
         private const val OAUTH2_TOKEN_AUTH_TOKEN = "oauth2_auth_token"

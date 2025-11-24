@@ -19,5 +19,11 @@ import org.springframework.context.annotation.Configuration
     bearerFormat = "JWT",
     scheme = "bearer"
 )
+@SecurityScheme(
+    name = "OAuth2 Authorization",
+    type = SecuritySchemeType.HTTP,
+    bearerFormat = "JWT",
+    scheme = "bearer"
+)
 @Configuration
 class SwaggerConfig

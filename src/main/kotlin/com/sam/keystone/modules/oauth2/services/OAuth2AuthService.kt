@@ -2,6 +2,7 @@ package com.sam.keystone.modules.oauth2.services
 
 import com.sam.keystone.config.RandomTokenGeneratorConfig
 import com.sam.keystone.infrastructure.jwt.OAuth2JWTTokenGeneratorService
+import com.sam.keystone.infrastructure.jwt.OIDCJWTTokenGenerator
 import com.sam.keystone.infrastructure.redis.OAuth2AuthCodeStore
 import com.sam.keystone.infrastructure.redis.OAuth2CodePKCEStore
 import com.sam.keystone.modules.oauth2.dto.OAuth2AuthorizationResponse
@@ -12,8 +13,10 @@ import com.sam.keystone.modules.oauth2.models.AuthorizeTokenModel
 import com.sam.keystone.modules.oauth2.models.CodeChallengeMethods
 import com.sam.keystone.modules.oauth2.models.OAuth2ResponseType
 import com.sam.keystone.modules.oauth2.repository.OAuth2ClientRepository
+import com.sam.keystone.modules.user.entity.User
 import org.springframework.stereotype.Service
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 @Service
@@ -23,6 +26,7 @@ class OAuth2AuthService(
     private val challengesStore: OAuth2CodePKCEStore,
     private val authCodeStore: OAuth2AuthCodeStore,
     private val jwtTokenGenerator: OAuth2JWTTokenGeneratorService,
+    private val oidcTokenGenerator: OIDCJWTTokenGenerator,
 ) {
 
     private fun validateRequestParameters(
@@ -63,6 +67,7 @@ class OAuth2AuthService(
         challengeCodeMethod: CodeChallengeMethods,
         scope: String? = null,
         grantType: String? = null,
+        nonce: String? = null,
     ): OAuth2AuthorizationResponse {
         if (responseType != OAuth2ResponseType.CODE) throw OAuth2InvalidResponseTypeException()
 
@@ -79,6 +84,12 @@ class OAuth2AuthService(
             clientId = clientId,
             grantType = grantType
         )
+
+        // if it's an openid scope request, create a token too
+        val providedScopes = scope?.split(" ") ?: emptySet()
+        if ("openid" in providedScopes && nonce != null) {
+            authCodeStore.saveClientNonce(clientId = entity.clientId, nonce = nonce, expiry = 2.minutes)
+        }
 
         // save the token client and the challenge codes
         authCodeStore.saveAuthTokenInfo(model = authTokenModel, expiry = tokenValidity)
@@ -134,24 +145,33 @@ class OAuth2AuthService(
         val possibleScopes = requestedScopes.intersect(entity.scopes)
         if (possibleScopes.isEmpty()) throw InvalidAuthorizeOrTokenParmsException(clientId)
 
+        val accessTokenTTL = 15.minutes
+        val refreshTokenTTL = 1.days
+
+        val jwtScopes = possibleScopes.joinToString(" ")
+
         // everything went well time to create a jwt
-        return try {
-            val accessTokenTTL = 15.minutes
-            val refreshTokenTTL = 1.days
+        val tokens = jwtTokenGenerator.generateOAuthTokenPair(
+            user = user,
+            clientId = entity.clientId,
+            scopes = jwtScopes,
+            accessTokenExpiry = accessTokenTTL,
+            refreshTokenExpiry = refreshTokenTTL
+        )
 
-            val jwtScopes = possibleScopes.joinToString(" ")
-
-            val tokens = jwtTokenGenerator.generateOAuthTokenPair(
+        try {
+            // get the id token info if available
+            val idToken = createIdTokenForUser(
+                scopes = possibleScopes,
+                clientId = clientId,
                 user = user,
-                clientId = entity.clientId,
-                scopes = jwtScopes,
-                accessTokenExpiry = accessTokenTTL,
-                refreshTokenExpiry = refreshTokenTTL
+                accessToken = tokens.accessToken
             )
 
-            OAuth2TokenResponseDto(
+            return OAuth2TokenResponseDto(
                 accessToken = tokens.accessToken,
                 expiry = accessTokenTTL.inWholeMilliseconds,
+                oidcToken = idToken,
                 refreshToken = if (entity.allowRefreshTokens) tokens.refreshToken else null,
                 refreshTokenExpiry = if (entity.allowRefreshTokens) refreshTokenTTL.inWholeMilliseconds else 0L,
                 redirectURI = redirect,
@@ -163,5 +183,20 @@ class OAuth2AuthService(
             challengesStore.deleteClientPKCE(clientId)
             authCodeStore.deleteCodeAndClient(clientId)
         }
+    }
+
+    private fun createIdTokenForUser(scopes: Set<String>, clientId: String, user: User, accessToken: String): String? {
+        if (!scopes.contains("openid")) return null
+
+        val savedNonce = authCodeStore.getClientNonce(clientId) ?: return null
+        return oidcTokenGenerator.generateOIDCToken(
+            user = user,
+            clientId = clientId,
+            nonce = savedNonce,
+            includeEmail = scopes.contains("email"),
+            includeProfile = scopes.contains("profile"),
+            tokenHash = tokenGenerator.hashToken(accessToken),
+            tokenExpiry = 1.hours
+        )
     }
 }

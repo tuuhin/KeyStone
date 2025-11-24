@@ -88,6 +88,8 @@ class OAuth2AuthController(
         codeChallengeMethod: CodeChallengeMethods,
         @RequestParam(value = "state", required = false)
         state: String,
+        @RequestParam(value = "nonce", required = false)
+        nonce: String? = null,
     ): OAuth2AuthorizationResponse {
 
         val response = authService.createTokenAndStorePKCE(
@@ -98,6 +100,7 @@ class OAuth2AuthController(
             grantType = grantType,
             challengeCode = codeChallenge,
             challengeCodeMethod = codeChallengeMethod,
+            nonce = nonce,
         )
 
         return response.copy(state = state)
@@ -164,7 +167,7 @@ class OAuth2AuthController(
 
     @PostMapping("/introspect")
     @ResponseStatus(HttpStatus.OK)
-    @SecurityRequirement(name = "Authorization")
+    @SecurityRequirement(name = "OAuth2 Authorization")
     @Operation(summary = "validate a token (access or refresh) and get metadata about it.")
     @ApiResponses(
         value = [
@@ -206,7 +209,7 @@ class OAuth2AuthController(
 
     @PostMapping("/refresh")
     @ResponseStatus(HttpStatus.CREATED)
-    @SecurityRequirement(name = "Authorization")
+    @SecurityRequirement(name = "OAuth2 Authorization")
     @Operation(summary = "Validate the given token and blacklist it and generate a new token pair")
     @ApiResponses(
         value = [
@@ -248,7 +251,7 @@ class OAuth2AuthController(
 
     @PostMapping("/revoke")
     @ResponseStatus(HttpStatus.OK)
-    @SecurityRequirement(name = "Authorization")
+    @SecurityRequirement(name = "OAuth2 Authorization")
     @Operation(summary = "Invalidate this token so it cannot be used anymore")
     @ApiResponses(
         value = [
