@@ -14,4 +14,5 @@ interface OAuth2ClientRepository : JpaRepository<OAuth2ClientEntity, Int> {
 
     fun findOAuth2ClientEntityByClientIdAndUser(clientId: String, user: User): OAuth2ClientEntity?
 
+    fun existsOAuth2ClientEntityByClientId(clientId: String): Boolean
 }
