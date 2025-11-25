@@ -1,6 +1,7 @@
 package com.sam.keystone.modules.oauth2.services
 
 import com.sam.keystone.config.RandomTokenGeneratorConfig
+import com.sam.keystone.config.models.CodeEncoding
 import com.sam.keystone.infrastructure.jwt.OAuth2JWTTokenGeneratorService
 import com.sam.keystone.infrastructure.jwt.OIDCJWTTokenGenerator
 import com.sam.keystone.infrastructure.redis.OAuth2AuthCodeStore
@@ -9,11 +10,12 @@ import com.sam.keystone.modules.oauth2.dto.OAuth2AuthorizationResponse
 import com.sam.keystone.modules.oauth2.dto.OAuth2TokenResponseDto
 import com.sam.keystone.modules.oauth2.entity.OAuth2ClientEntity
 import com.sam.keystone.modules.oauth2.exceptions.*
-import com.sam.keystone.modules.oauth2.models.AuthorizeTokenModel
-import com.sam.keystone.modules.oauth2.models.CodeChallengeMethods
 import com.sam.keystone.modules.oauth2.models.OAuth2ResponseType
 import com.sam.keystone.modules.oauth2.repository.OAuth2ClientRepository
 import com.sam.keystone.modules.user.entity.User
+import com.sam.keystone.security.models.AuthorizeTokenModel
+import com.sam.keystone.security.models.CodeChallengeMethods
+import com.sam.keystone.security.models.PKCEModel
 import org.springframework.stereotype.Service
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
@@ -74,16 +76,18 @@ class OAuth2AuthService(
         val entity = validateRequestParameters(clientId, redirectURI, scope, grantType)
 
         // generate a random token
-        val newAuthToken = tokenGenerator.generateRandomToken(16)
+        val newAuthToken = tokenGenerator.generateRandomToken(16, CodeEncoding.HEX_LOWERCASE)
         val tokenValidity = 2.minutes
 
         val authTokenModel = AuthorizeTokenModel(
-            code = newAuthToken,
+            authCode = newAuthToken,
             redirectURI = redirectURI,
             scopes = scope,
             clientId = clientId,
             grantType = grantType
         )
+
+        val codeExchange = PKCEModel(challengeCode = challengeCode, challengeCodeMethod)
 
         // if it's an openid scope request, create a token too
         val providedScopes = scope?.split(" ") ?: emptySet()
@@ -93,12 +97,7 @@ class OAuth2AuthService(
 
         // save the token client and the challenge codes
         authCodeStore.saveAuthTokenInfo(model = authTokenModel, expiry = tokenValidity)
-        challengesStore.saveClientPKCE(
-            clientId = entity.clientId,
-            challengeCode = challengeCode,
-            challengeCodeAlgo = challengeCodeMethod.name,
-            expiry = tokenValidity
-        )
+        challengesStore.saveClientPKCE(clientId = entity.clientId, pkCE = codeExchange, expiry = tokenValidity)
 
         // returns the newAuthToken
         return OAuth2AuthorizationResponse(
@@ -129,15 +128,14 @@ class OAuth2AuthService(
         if (entity.secretHash != secretHash) throw InvalidAuthorizeOrTokenParmsException(clientId)
 
         // check if the hash matches
-        val (hash, algo) = challengesStore.getCodeChallenges(entity.clientId)
-        val realAlgo = CodeChallengeMethods.fromString(algo)
-        val reHash = realAlgo.verifyHash(codeVerifier, hash)
-        if (!reHash) throw PKCEInvalidException()
+        val codeExchange = challengesStore.getCodeChallenges(entity.clientId) ?: throw PKCEInvalidException()
+        val isVerified = codeExchange.verifyHash(codeVerifier)
+        if (!isVerified) throw PKCEInvalidException()
 
         // check if the auth code matches
         val authModel = authCodeStore.findAuthCodeViaClient(clientId) ?: throw OAuth2AuthCodeFailedException()
 
-        if (authModel.code != authCode) throw OAuth2AuthCodeFailedException()
+        if (authModel.authCode != authCode) throw OAuth2AuthCodeFailedException()
         if (authModel.redirectURI != redirect) throw InvalidAuthorizeOrTokenParmsException(clientId)
 
         // check if the scopes are matching

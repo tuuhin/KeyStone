@@ -1,7 +1,7 @@
-package com.sam.keystone.modules.oauth2.models
+package com.sam.keystone.security.models
 
 data class AuthorizeTokenModel(
-    val code: String,
+    val authCode: String,
     val redirectURI: String,
     val clientId: String,
     val scopes: String? = null,

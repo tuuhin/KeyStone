@@ -5,10 +5,7 @@ import com.sam.keystone.infrastructure.jwt.OAuth2JWTTokenGeneratorService
 import com.sam.keystone.infrastructure.redis.TokenBlackListManager
 import com.sam.keystone.modules.oauth2.dto.*
 import com.sam.keystone.modules.oauth2.entity.OAuth2ClientEntity
-import com.sam.keystone.modules.oauth2.exceptions.ClientNotFoundException
-import com.sam.keystone.modules.oauth2.exceptions.InvalidAuthorizeOrTokenParmsException
-import com.sam.keystone.modules.oauth2.exceptions.OAuth2TokenInvalidException
-import com.sam.keystone.modules.oauth2.exceptions.OAuth2UserException
+import com.sam.keystone.modules.oauth2.exceptions.*
 import com.sam.keystone.modules.oauth2.mappers.toDto
 import com.sam.keystone.modules.oauth2.repository.OAuth2ClientRepository
 import com.sam.keystone.modules.user.entity.User
@@ -42,7 +39,7 @@ class OAuth2TokenService(
     fun introspectToken(request: OAuth2TokenRequestDto, user: User): OAuth2TokenIntrospectResponseDto {
         validateOAuth2Client(request.clientId, secret = request.secret, user = user)
 
-        val result = jwtTokenGenerator.introspectToken(request.token)
+        val result = jwtTokenGenerator.introspectToken(request.token) ?: throw OAuth2IntrospectionFailedException()
         return result.toDto()
     }
 
@@ -50,7 +47,7 @@ class OAuth2TokenService(
     fun invalidateAndCreateNewToken(request: OAuth2RefreshTokenRequestDto, currentUser: User): OAuth2TokenResponseDto {
         val client = validateOAuth2Client(request.clientId, secret = request.secret, user = currentUser)
 
-        val result = jwtTokenGenerator.introspectToken(request.token)
+        val result = jwtTokenGenerator.introspectToken(request.token) ?: throw OAuth2IntrospectionFailedException()
         if (result.userId != currentUser.id) throw OAuth2UserException()
 
         if (blackListManager.isBlackListed(request.token))
@@ -83,7 +80,7 @@ class OAuth2TokenService(
     fun revokeTokens(request: OAuth2TokenRequestDto, currentUser: User): OAuth2RevokeResponseDto {
         validateOAuth2Client(request.clientId, secret = request.secret, user = currentUser)
 
-        val result = jwtTokenGenerator.introspectToken(request.token)
+        val result = jwtTokenGenerator.introspectToken(request.token) ?: throw OAuth2IntrospectionFailedException()
         if (result.userId != currentUser.id) throw OAuth2UserException()
 
         if (blackListManager.isBlackListed(request.token, request.tokenType)) return OAuth2RevokeResponseDto()

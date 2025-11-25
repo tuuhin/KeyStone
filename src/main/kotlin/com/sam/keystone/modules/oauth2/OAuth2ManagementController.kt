@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.*
     name = "OAuth2 Client Management",
     description = "Manges crud operation associated with client"
 )
-@SecurityRequirement(name = "OAuth2 Authorization")
+@SecurityRequirement(name = "Authorization")
 class OAuth2ManagementController(
     private val service: OAuth2ClientService,
 ) {

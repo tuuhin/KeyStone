@@ -3,11 +3,11 @@ package com.sam.keystone.modules.oauth2
 import com.nimbusds.jose.jwk.JWKSet
 import com.sam.keystone.modules.core.dto.ErrorResponseDto
 import com.sam.keystone.modules.oauth2.dto.*
-import com.sam.keystone.modules.oauth2.models.CodeChallengeMethods
 import com.sam.keystone.modules.oauth2.models.OAuth2ResponseType
 import com.sam.keystone.modules.oauth2.services.OAuth2AuthService
 import com.sam.keystone.modules.oauth2.services.OAuth2TokenService
 import com.sam.keystone.modules.user.utils.ext.currentUser
+import com.sam.keystone.security.models.CodeChallengeMethods
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content

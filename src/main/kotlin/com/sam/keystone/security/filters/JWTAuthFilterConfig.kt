@@ -1,4 +1,4 @@
-package com.sam.keystone.security
+package com.sam.keystone.security.filters
 
 import com.sam.keystone.infrastructure.jwt.JWTTokenGeneratorService
 import com.sam.keystone.modules.user.repository.UserRepository

@@ -1,6 +1,6 @@
 package com.sam.keystone.infrastructure.redis
 
-import com.sam.keystone.modules.oauth2.models.AuthorizeTokenModel
+import com.sam.keystone.security.models.AuthorizeTokenModel
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
@@ -20,17 +20,27 @@ class OAuth2AuthCodeStore(private val template: StringRedisTemplate) {
         val operation = template.opsForHash<String, String>()
         val coreKey = "$OAUTH2_CLIENT_ID:${model.clientId}"
         // auth code and redirect uri
-        operation.put(coreKey, OAUTH2_TOKEN_AUTH_TOKEN, model.code)
+        operation.put(coreKey, OAUTH2_TOKEN_AUTH_TOKEN, model.authCode)
         operation.put(coreKey, OAUTH2_TOKEN_REDIRECT_URI, model.redirectURI)
         // optional scopes and grant types
-        model.scopes?.let {
-            operation.put(coreKey, OAUTH2_TOKEN_SCOPES, model.scopes)
+        model.scopes?.let { scope ->
+            if (scope.isEmpty()) return@let
+            operation.put(coreKey, OAUTH2_TOKEN_SCOPES, scope)
         }
-        model.grantType?.let {
-            operation.put(coreKey, OAUTH2_TOKEN_GRANT_TYPES, model.grantType)
+        model.grantType?.let { grants ->
+            if (grants.isEmpty()) return@let
+            operation.put(coreKey, OAUTH2_TOKEN_GRANT_TYPES, grants)
         }
-        operation.expiration("$OAUTH2_CLIENT_ID:${model.clientId}")
-            .expire(expiry.toJavaDuration())
+        operation.expire(
+            coreKey,
+            expiry.toJavaDuration(),
+            listOf(
+                OAUTH2_TOKEN_AUTH_TOKEN,
+                OAUTH2_TOKEN_REDIRECT_URI,
+                OAUTH2_TOKEN_SCOPES,
+                OAUTH2_TOKEN_GRANT_TYPES
+            )
+        )
         logger.debug("SAVING AUTH TOKEN INFO KEY :$coreKey EXPIRY :$expiry")
     }
 
@@ -49,7 +59,7 @@ class OAuth2AuthCodeStore(private val template: StringRedisTemplate) {
         }
         logger.debug("FOUND AUTH TOKEN ENTRY :$coreKey")
         return AuthorizeTokenModel(
-            code = authCode,
+            authCode = authCode,
             redirectURI = redirectURI,
             scopes = scopes,
             grantType = grantType,

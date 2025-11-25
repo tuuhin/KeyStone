@@ -51,7 +51,7 @@ class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
         )
     }
 
-    fun introspectToken(token: String): OAuth2IntrospectionResult {
+    fun introspectToken(token: String): OAuth2IntrospectionResult? {
         val result = generator.validateToken(token)
 
         val clientId = result.claims.getOrDefault(JWT_CLAIM_CLIENT_ID, null)?.asString()
@@ -59,8 +59,7 @@ class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
         val userId = result.claims.getOrDefault(JWT_CLAIM_USER_ID, null)?.asLong()
         val tokenTypeString = result.claims.getOrDefault(JWT_CLAIM_TOKEN_TYPE, null)?.asString()
 
-        if (clientId == null || scopes == null || userId == null || tokenTypeString == null)
-            throw JWTIntrospectionMissingClaims()
+        if (clientId == null || scopes == null || userId == null || tokenTypeString == null) return null
 
         return OAuth2IntrospectionResult(
             active = !result.isExpired,

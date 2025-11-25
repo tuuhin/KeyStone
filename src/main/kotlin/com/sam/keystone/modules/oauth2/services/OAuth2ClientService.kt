@@ -1,6 +1,7 @@
 package com.sam.keystone.modules.oauth2.services
 
 import com.sam.keystone.config.RandomTokenGeneratorConfig
+import com.sam.keystone.config.models.CodeEncoding
 import com.sam.keystone.modules.core.dto.MessageResponseDto
 import com.sam.keystone.modules.oauth2.dto.OAuth2ClientListResponseDto
 import com.sam.keystone.modules.oauth2.dto.OAuth2ClientResponseDto
@@ -34,8 +35,8 @@ class OAuth2ClientService(
             }
         }
 
-        val clientId = tokenGenerator.generateRandomToken(16)
-        val clientSecret = tokenGenerator.generateRandomToken(16)
+        val clientId = tokenGenerator.generateRandomToken(16, CodeEncoding.HEX_LOWERCASE)
+        val clientSecret = tokenGenerator.generateRandomToken(16, CodeEncoding.HEX_LOWERCASE)
         val secretHash = tokenGenerator.hashToken(clientSecret)
 
         val entity = request.toEntity(clientId = clientId, clientSecretHash = secretHash, user = user)
@@ -81,7 +82,7 @@ class OAuth2ClientService(
         val entity = repository.findOAuth2ClientEntityByClientIdAndUser(clientId, user)
             ?: throw ClientNotFoundException(clientId)
 
-        val clientSecret = tokenGenerator.generateRandomToken(16)
+        val clientSecret = tokenGenerator.generateRandomToken(16, CodeEncoding.HEX_LOWERCASE)
         val secretHash = tokenGenerator.hashToken(clientSecret)
 
         val updated = entity.also { it.secretHash = secretHash }
