@@ -9,16 +9,16 @@ class UserResponseDto(
     val id: Long = 0L,
 
     @field:JsonProperty("email")
-    val email: String,
+    val email: String? = null,
 
     @field:JsonProperty("user_name")
-    val userName: String,
+    val userName: String? = null,
 
     @field:JsonProperty("created_at")
-    val createdAt: Instant,
+    val createdAt: Instant? = null,
 
     @field:JsonProperty("is_verified")
-    val isVerified: Boolean = false,
+    val isVerified: Boolean? = null,
 
     @field:JsonProperty("bio")
     var bio: String? = null,

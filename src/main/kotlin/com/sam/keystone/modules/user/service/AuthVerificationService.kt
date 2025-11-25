@@ -3,13 +3,13 @@ package com.sam.keystone.modules.user.service
 import com.sam.keystone.config.RandomTokenGeneratorConfig
 import com.sam.keystone.infrastructure.email.EmailSenderService
 import com.sam.keystone.infrastructure.redis.UserVerificationTokenManager
-import com.sam.keystone.modules.core.exceptions.TooManyRequestException
 import com.sam.keystone.modules.user.dto.request.ResendEmailRequest
 import com.sam.keystone.modules.user.entity.User
 import com.sam.keystone.modules.user.exceptions.UserValidationException
 import com.sam.keystone.modules.user.exceptions.UserVerificationException
 import com.sam.keystone.modules.user.repository.UserRepository
 import com.sam.keystone.modules.user.repository.UserVerificationRepository
+import com.sam.keystone.security.exception.TooManyRequestException
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.net.URLEncoder

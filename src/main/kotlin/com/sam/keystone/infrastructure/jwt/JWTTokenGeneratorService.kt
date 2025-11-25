@@ -1,5 +1,6 @@
 package com.sam.keystone.infrastructure.jwt
 
+import com.auth0.jwt.exceptions.JWTVerificationException
 import com.sam.keystone.modules.user.dto.response.TokenResponseDto
 import com.sam.keystone.modules.user.entity.User
 import com.sam.keystone.modules.user.models.JWTTokenType
@@ -49,7 +50,7 @@ class JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
             val tokenTYpe = result.claims.getOrDefault(JWT_CLAIM_TOKEN_TYPE, null)
 
             if (tokenTYpe?.asString() == type.name) userId to result.tokenTTL else null
-        } catch (_: Exception) {
+        } catch (_: JWTVerificationException) {
             null
         }
     }
