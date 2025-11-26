@@ -2,6 +2,9 @@ package com.sam.keystone.modules.user.entity
 
 import com.sam.keystone.modules.user.models.UserRole
 import jakarta.persistence.*
+import org.springframework.security.core.GrantedAuthority
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.userdetails.UserDetails
 import java.time.Instant
 
 
@@ -38,4 +41,11 @@ class User(
 
     @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], optional = false)
     var verifyState: UserVerifyInfo? = null,
-)
+) : UserDetails {
+
+    override fun getAuthorities(): Collection<GrantedAuthority?> = listOf(SimpleGrantedAuthority(role.name))
+
+    override fun getPassword(): String? = null
+
+    override fun getUsername(): String? = userName
+}

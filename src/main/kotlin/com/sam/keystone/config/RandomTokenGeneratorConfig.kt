@@ -1,5 +1,6 @@
 package com.sam.keystone.config
 
+import com.sam.keystone.config.models.CodeEncoding
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -8,18 +9,26 @@ import kotlin.io.encoding.Base64
 @Component
 class RandomTokenGeneratorConfig {
 
-    private val messageDigest by lazy { MessageDigest.getInstance("SHA-256") }
-    private val secureRandom by lazy { SecureRandom() }
+    private val _messageDigest by lazy { MessageDigest.getInstance("SHA-256") }
+    private val _secureRandom by lazy { SecureRandom() }
 
-    fun generateRandomToken(byteLength: Int = 32): String {
+    fun generateRandomToken(byteLength: Int = 32, encoding: CodeEncoding = CodeEncoding.BASE_64): String {
         val randomBytes = ByteArray(byteLength)
 
-        secureRandom.nextBytes(randomBytes)
-        return Base64.encode(randomBytes)
+        _secureRandom.nextBytes(randomBytes)
+        return when (encoding) {
+            CodeEncoding.BASE_64 -> Base64.encode(randomBytes)
+            CodeEncoding.HEX_UPPERCASE -> randomBytes.toHexString(HexFormat.UpperCase)
+            CodeEncoding.HEX_LOWERCASE -> randomBytes.toHexString(HexFormat.Default)
+        }
     }
 
-    fun hashToken(token: String): String {
-        val hash = messageDigest.digest(token.toByteArray())
-        return Base64.encode(hash)
+    fun hashToken(token: String, encoding: CodeEncoding = CodeEncoding.BASE_64): String {
+        val hash = _messageDigest.digest(token.toByteArray())
+        return when (encoding) {
+            CodeEncoding.BASE_64 -> Base64.encode(hash)
+            CodeEncoding.HEX_UPPERCASE -> hash.toHexString(HexFormat.UpperCase)
+            CodeEncoding.HEX_LOWERCASE -> hash.toHexString(HexFormat.Default)
+        }
     }
 }

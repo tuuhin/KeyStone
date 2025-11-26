@@ -27,7 +27,7 @@ class AuthTokenManagementService(
             throw UserAuthException("Refresh token blacklisted")
 
         // add the item to the blacklist so it cannot be used anymore
-        blackListManager.addToBlackList(request.token, expireAfter)
+        blackListManager.addToBlackList(request.token, type = JWTTokenType.REFRESH_TOKEN, expireAfter)
 
         // create a new token pair
         val user = userRepository.findUserById(userId) ?: throw UserAuthException("Cannot find user")
@@ -35,12 +35,12 @@ class AuthTokenManagementService(
     }
 
 
-    fun blackListToken(request: RefreshTokenRequest) {
-        val (_, expireAfter) = jwtTokenManager.validateToken(request.token, type = JWTTokenType.REFRESH_TOKEN)
+    fun blackListToken(request: RefreshTokenRequest, user: User) {
+        val (userId, expireAfter) = jwtTokenManager.validateToken(request.token, type = JWTTokenType.REFRESH_TOKEN)
             ?: throw UserAuthException("Refresh Token expired or invalid")
 
         // add the item to the blacklist so it cannot be used anymore
         if (blackListManager.isBlackListed(request.token)) return
-        blackListManager.addToBlackList(request.token, expireAfter)
+        blackListManager.addToBlackList(request.token, type = JWTTokenType.REFRESH_TOKEN, expireAfter)
     }
 }
