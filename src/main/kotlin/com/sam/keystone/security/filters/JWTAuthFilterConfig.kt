@@ -44,6 +44,10 @@ class JWTAuthFilterConfig(
     }
 
     private fun addAuthorizedUser(request: HttpServletRequest) {
+        if (SecurityContextHolder.getContext().authentication != null) {
+            _logger.warn("SECURITY CONTEXT IS ALREADY CONFIGURED")
+            return
+        }
 
         val token = request.bearerToken ?: return
         val (userId, _) = jwtTokenService.validateToken(token) ?: throw JWTTokenExpiredException()

@@ -46,6 +46,10 @@ class OAuth2AuthFilterConfig(
     }
 
     private fun addAuthorizedOAuth2Client(request: HttpServletRequest) {
+        if (SecurityContextHolder.getContext().authentication != null) {
+            _logger.warn("SECURITY CONTEXT IS ALREADY CONFIGURED")
+            return
+        }
         val token = request.bearerToken ?: return
         val result = try {
             generator.validateToken(token)
