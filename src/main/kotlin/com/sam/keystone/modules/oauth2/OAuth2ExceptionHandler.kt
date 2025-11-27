@@ -35,7 +35,7 @@ class OAuth2ExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleException(ex: InvalidAuthorizeOrTokenParmsException, request: HttpServletRequest): ErrorResponseDto {
         return ErrorResponseDto(
-            message = ex.message ?: "Cannot work with current params",
+            message = ex.message,
             error = "Client Error",
             path = request.requestURI
         )

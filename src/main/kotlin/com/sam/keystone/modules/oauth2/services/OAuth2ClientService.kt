@@ -12,11 +12,10 @@ import com.sam.keystone.modules.oauth2.exceptions.RegisterClientValidationFailed
 import com.sam.keystone.modules.oauth2.mappers.toDto
 import com.sam.keystone.modules.oauth2.mappers.toEntity
 import com.sam.keystone.modules.oauth2.repository.OAuth2ClientRepository
+import com.sam.keystone.modules.oauth2.validators.URIValidator
 import com.sam.keystone.modules.user.entity.User
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
-import java.net.URI
-import java.net.URISyntaxException
 
 @Service
 class OAuth2ClientService(
@@ -27,13 +26,17 @@ class OAuth2ClientService(
     fun createNewClient(request: RegisterClientRequestDto, user: User): RegisterClientResponseDto {
 
         // check request validity
-        request.redirectURLs.forEach { url ->
-            try {
-                URI(url)
-            } catch (_: URISyntaxException) {
-                throw RegisterClientValidationFailedException("Failed to validate redirect uri :$url")
-            }
-        }
+        val isInvalid = request.redirectURLs.any { url -> !URIValidator.isValid(url) }
+        if (isInvalid)
+            throw RegisterClientValidationFailedException("Invalid redirect uri")
+
+        // check the grant types
+        if (request.grantType.isEmpty())
+            throw RegisterClientValidationFailedException("No grant type added for the client")
+
+        val isGrantTypeAbsent = request.validGrantTypes.isEmpty()
+        if (isGrantTypeAbsent)
+            throw RegisterClientValidationFailedException("Unsupported grant type. Only 'authorization_code' and 'client_credentials' are valid")
 
         val clientId = tokenGenerator.generateRandomToken(16, CodeEncoding.HEX_LOWERCASE)
         val clientSecret = tokenGenerator.generateRandomToken(16, CodeEncoding.HEX_LOWERCASE)
@@ -63,14 +66,27 @@ class OAuth2ClientService(
     }
 
     fun updateClientMetaData(clientId: String, user: User, request: RegisterClientRequestDto): OAuth2ClientResponseDto {
+
+        val isInvalid = request.redirectURLs.any { url -> !URIValidator.isValid(url) }
+        if (isInvalid)
+            throw RegisterClientValidationFailedException("Invalid redirect uri")
+
+        // check the grant types
+        if (request.grantType.isEmpty())
+            throw RegisterClientValidationFailedException("No grant type added for the client")
+
+        val isGrantTypeAbsent = request.validGrantTypes.isEmpty()
+        if (isGrantTypeAbsent)
+            throw RegisterClientValidationFailedException("Unsupported grant type. Only 'authorization_code' and 'client_credentials' are valid")
+
         val entity = repository.findOAuth2ClientEntityByClientIdAndUser(clientId, user)
             ?: throw ClientNotFoundException(clientId)
 
         val updated = entity.also { entity ->
             entity.clientName = request.clientName
-            entity.scopes.addAll(request.scopes)
-            entity.redirectUris.addAll(request.redirectURLs)
-            entity.grantTypes.addAll(request.grantType)
+            entity.scopes = request.scopes
+            entity.redirectUris = request.redirectURLs
+            entity.grantTypes = request.grantType
         }
         val saveResult = repository.save(updated)
 

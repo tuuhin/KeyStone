@@ -7,5 +7,5 @@ data class TokenResponseDto(
     val accessToken: String,
 
     @field:JsonProperty("refresh_token")
-    val refreshToken: String,
+    val refreshToken: String? = null,
 )
