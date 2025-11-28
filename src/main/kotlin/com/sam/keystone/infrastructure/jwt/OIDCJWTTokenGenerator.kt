@@ -19,18 +19,18 @@ class OIDCJWTTokenGenerator(private val generator: JWTKeysGenerator) {
     ): String {
 
         val baseMap = buildMap {
-            put(JWT_OPEN_ID_CLAIM_SUB, user.id)
-            put(JWT_OPEN_ID_CLAIM_AUDIENCE, clientId)
-            put(JWT_OPEN_ID_CLAIM_NONCE, nonce)
-            put(JWT_OPEN_ID_CLAIM_AT_HASH, tokenHash)
+            put(JWTClaims.JWT_CLAIM_SUB, user.id)
+            put(JWTClaims.JWT_CLAIM_AUDIENCE, clientId)
+            put(JWTClaims.JWT_CLAIM_NONCE, nonce)
+            put(JWTClaims.JWT_TOKEN_AT_HASH, tokenHash)
             if (includeEmail) {
-                put(JWT_OPEN_ID_CLAIM_EMAIL, user.email)
-                put(JWT_OPEN_ID_CLAIM_EMAIL_VERIFIED, (user.verifyState?.isVerified ?: false))
+                put(JWTClaims.JWT_OPEN_ID_CLAIM_EMAIL, user.email)
+                put(JWTClaims.JWT_OPEN_ID_CLAIM_EMAIL_VERIFIED, (user.verifyState?.isVerified ?: false))
             }
             if (includeProfile) {
-                put(JWT_OPEN_ID_CLAIM_USER_NAME, user.userName)
-                put(JWT_OPEN_ID_CLAIM_USER_AVATAR, user.profile?.avatarUrl)
-                put(JWT_OPEN_ID_CLAIM_USER_FULL_NAME, user.profile?.fullName)
+                put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_NAME, user.userName)
+                put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_AVATAR, user.profile?.avatarUrl)
+                put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_FULL_NAME, user.profile?.fullName)
             }
         }
 
@@ -38,17 +38,5 @@ class OIDCJWTTokenGenerator(private val generator: JWTKeysGenerator) {
             timeToLive = tokenExpiry,
             claims = baseMap
         )
-    }
-
-    companion object {
-        private const val JWT_OPEN_ID_CLAIM_SUB = "sub"
-        private const val JWT_OPEN_ID_CLAIM_AUDIENCE = "aud"
-        private const val JWT_OPEN_ID_CLAIM_NONCE = "nonce"
-        private const val JWT_OPEN_ID_CLAIM_AT_HASH = "at_hash"
-        private const val JWT_OPEN_ID_CLAIM_EMAIL = "email"
-        private const val JWT_OPEN_ID_CLAIM_EMAIL_VERIFIED = "email_verified"
-        private const val JWT_OPEN_ID_CLAIM_USER_NAME = "user_name"
-        private const val JWT_OPEN_ID_CLAIM_USER_AVATAR = "user_avatar"
-        private const val JWT_OPEN_ID_CLAIM_USER_FULL_NAME = "user_full_name"
     }
 }

@@ -6,20 +6,28 @@ import com.sam.keystone.infrastructure.jwt.OAuth2JWTTokenGeneratorService
 import com.sam.keystone.infrastructure.jwt.OIDCJWTTokenGenerator
 import com.sam.keystone.infrastructure.redis.OAuth2AuthCodeStore
 import com.sam.keystone.infrastructure.redis.OAuth2CodePKCEStore
+import com.sam.keystone.infrastructure.redis.TokenBlackListManager
 import com.sam.keystone.modules.oauth2.dto.OAuth2AuthorizationResponse
 import com.sam.keystone.modules.oauth2.dto.OAuth2TokenResponseDto
 import com.sam.keystone.modules.oauth2.entity.OAuth2ClientEntity
 import com.sam.keystone.modules.oauth2.exceptions.*
+import com.sam.keystone.modules.oauth2.models.OAuth2GrantTypes
 import com.sam.keystone.modules.oauth2.models.OAuth2ResponseType
 import com.sam.keystone.modules.oauth2.repository.OAuth2ClientRepository
 import com.sam.keystone.modules.user.entity.User
+import com.sam.keystone.modules.user.models.JWTTokenType
 import com.sam.keystone.security.models.AuthorizeTokenModel
 import com.sam.keystone.security.models.CodeChallengeMethods
 import com.sam.keystone.security.models.PKCEModel
 import org.springframework.stereotype.Service
+import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
+import kotlin.time.toKotlinInstant
 
 @Service
 class OAuth2AuthService(
@@ -29,6 +37,7 @@ class OAuth2AuthService(
     private val authCodeStore: OAuth2AuthCodeStore,
     private val jwtTokenGenerator: OAuth2JWTTokenGeneratorService,
     private val oidcTokenGenerator: OIDCJWTTokenGenerator,
+    private val blackListManager: TokenBlackListManager,
 ) {
 
     private fun validateRequestParameters(
@@ -67,24 +76,23 @@ class OAuth2AuthService(
         redirectURI: String,
         challengeCode: String,
         challengeCodeMethod: CodeChallengeMethods,
+        maxTokenTTLInSeconds: Int = 0,
         scope: String? = null,
-        grantType: String? = null,
         nonce: String? = null,
     ): OAuth2AuthorizationResponse {
         if (responseType != OAuth2ResponseType.CODE) throw OAuth2InvalidResponseTypeException()
 
-        val entity = validateRequestParameters(clientId, redirectURI, scope, grantType)
+        val entity = validateRequestParameters(clientId, redirectURI, scope, null)
 
         // generate a random token
         val newAuthToken = tokenGenerator.generateRandomToken(16, CodeEncoding.HEX_LOWERCASE)
-        val tokenValidity = 2.minutes
+        val tokenValidity = maxOf(120, maxTokenTTLInSeconds)
 
         val authTokenModel = AuthorizeTokenModel(
             authCode = newAuthToken,
             redirectURI = redirectURI,
             scopes = scope,
             clientId = clientId,
-            grantType = grantType
         )
 
         val codeExchange = PKCEModel(challengeCode = challengeCode, challengeCodeMethod)
@@ -96,51 +104,72 @@ class OAuth2AuthService(
         }
 
         // save the token client and the challenge codes
-        authCodeStore.saveAuthTokenInfo(model = authTokenModel, expiry = tokenValidity)
-        challengesStore.saveClientPKCE(clientId = entity.clientId, pkCE = codeExchange, expiry = tokenValidity)
+        authCodeStore.saveAuthTokenInfo(model = authTokenModel, expiry = tokenValidity.seconds)
+        challengesStore.saveClientPKCE(clientId = entity.clientId, pkCE = codeExchange, expiry = tokenValidity.seconds)
 
         // returns the newAuthToken
         return OAuth2AuthorizationResponse(
             authCode = newAuthToken,
             type = OAuth2ResponseType.CODE,
             redirect = redirectURI,
-            expiresIn = tokenValidity.inWholeMilliseconds
+            expiresIn = tokenValidity.seconds.inWholeMilliseconds
         )
     }
 
     fun validateTokenRequest(
         clientId: String,
-        clientSecret: String,
-        redirect: String,
-        grantType: String,
         authCode: String,
-        codeVerifier: String,
+        redirect: String,
+        clientSecret: String? = null,
+        codeVerifier: String? = null,
+        scopes: String? = null,
     ): OAuth2TokenResponseDto {
-        // validate the grant type
-        if (grantType != "authorization_code") throw InvalidAuthorizeOrTokenParmsException(clientId)
+
+        // basic validation
+        if (authCode.isNotBlank()) throw InvalidAuthorizeOrTokenParmsException("Code cannot be empty or blank ")
 
         //validate parameters
         val entity = validateRequestParameters(clientId, redirect)
-        val user = entity.user ?: throw InvalidAuthorizeOrTokenParmsException(clientId)
 
-        // hash the client secret and check if this is correct
-        val secretHash = tokenGenerator.hashToken(clientSecret)
-        if (entity.secretHash != secretHash) throw InvalidAuthorizeOrTokenParmsException(clientId)
+        val codeVerifierPresent = codeVerifier != null && codeVerifier.isNotBlank()
+        val clientSecretPresent = clientSecret != null && clientSecret.isNotBlank()
 
-        // check if the hash matches
-        val codeExchange = challengesStore.getCodeChallenges(entity.clientId) ?: throw PKCEInvalidException()
-        val isVerified = codeExchange.verifyHash(codeVerifier)
-        if (!isVerified) throw PKCEInvalidException()
+        when {
+            codeVerifierPresent && clientSecretPresent ->
+                throw InvalidAuthorizeOrTokenParmsException("Request is ambiguous needed a single proof of authority")
+
+            codeVerifierPresent && !clientSecretPresent -> {
+                val codeExchange = challengesStore.getCodeChallenges(entity.clientId) ?: throw PKCEInvalidException()
+                val isVerified = codeExchange.verifyHash(codeVerifier)
+                if (!isVerified) throw PKCEInvalidException()
+            }
+
+            !codeVerifierPresent && clientSecretPresent -> {
+                val codeExchange = challengesStore.getCodeChallenges(entity.clientId)
+                if (codeExchange != null)
+                    throw InvalidAuthorizeOrTokenParmsException("Client was authorized with a different proof")
+                // hash the client secret and check if this is correct
+                val secretHash = tokenGenerator.hashToken(clientSecret)
+                if (entity.secretHash != secretHash) throw InvalidAuthorizeOrTokenParmsException(clientId)
+            }
+
+            else -> throw InvalidAuthorizeOrTokenParmsException("No proof of authority")
+        }
 
         // check if the auth code matches
         val authModel = authCodeStore.findAuthCodeViaClient(clientId) ?: throw OAuth2AuthCodeFailedException()
-
-        if (authModel.authCode != authCode) throw OAuth2AuthCodeFailedException()
-        if (authModel.redirectURI != redirect) throw InvalidAuthorizeOrTokenParmsException(clientId)
+        // validate the values
+        val isAuthModelCorrect = authModel.authCode == authCode &&
+                authModel.redirectURI == redirect &&
+                authModel.clientId == clientId
+        if (isAuthModelCorrect) throw OAuth2AuthCodeFailedException()
 
         // check if the scopes are matching
-        val requestedScopes = authModel.scopes?.split(" ") ?: emptySet()
-        val possibleScopes = requestedScopes.intersect(entity.scopes)
+        val requestedScopes = scopes?.split(" ") ?: emptySet()
+        val savedScopes = authModel.scopes?.split(" ") ?: emptySet()
+
+        // union of the requested and saved one and the intersection of client scopes
+        val possibleScopes = (requestedScopes union savedScopes) intersect (entity.scopes)
         if (possibleScopes.isEmpty()) throw InvalidAuthorizeOrTokenParmsException(clientId)
 
         val accessTokenTTL = 15.minutes
@@ -148,23 +177,26 @@ class OAuth2AuthService(
 
         val jwtScopes = possibleScopes.joinToString(" ")
 
-        // everything went well time to create a jwt
-        val tokens = jwtTokenGenerator.generateOAuthTokenPair(
-            user = user,
-            clientId = entity.clientId,
-            scopes = jwtScopes,
-            accessTokenExpiry = accessTokenTTL,
-            refreshTokenExpiry = refreshTokenTTL
-        )
-
         try {
-            // get the id token info if available
-            val idToken = createIdTokenForUser(
-                scopes = possibleScopes,
-                clientId = clientId,
-                user = user,
-                accessToken = tokens.accessToken
+            // everything went well time to create a jwt
+            val tokens = jwtTokenGenerator.generateOAuthTokenPair(
+                user = entity.user,
+                clientId = entity.clientId,
+                scopes = jwtScopes,
+                accessTokenExpiry = accessTokenTTL,
+                refreshTokenExpiry = refreshTokenTTL
             )
+
+            // get the id token info if available
+            val idToken = entity.user?.let { user ->
+                if (!possibleScopes.contains("openid")) return@let null
+                createIdTokenForUser(
+                    scopes = possibleScopes,
+                    clientId = clientId,
+                    user = user,
+                    accessToken = tokens.accessToken
+                )
+            }
 
             return OAuth2TokenResponseDto(
                 accessToken = tokens.accessToken,
@@ -180,6 +212,123 @@ class OAuth2AuthService(
             // ensures the code is cleaned
             challengesStore.deleteClientPKCE(clientId)
             authCodeStore.deleteCodeAndClient(clientId)
+        }
+    }
+
+    fun createTokensForClientCredentialsGrant(
+        clientId: String,
+        clientSecret: String?,
+        scopes: String? = null,
+    ): OAuth2TokenResponseDto {
+        if (clientSecret == null)
+            throw InvalidAuthorizeOrTokenParmsException("Client Secret required for client")
+
+        val entity = repository.findOAuth2ClientEntityByClientId(clientId)
+            ?: throw ClientNotFoundException(clientId)
+
+        // if no scopes are found, use the current scopes
+        val requestedScopes = scopes?.split(" ") ?: entity.scopes
+        // only take the scopes that are common to provided and existed
+        val possibleScopes = requestedScopes.intersect(entity.scopes)
+        if (possibleScopes.isEmpty()) throw InvalidAuthorizeOrTokenParmsException(clientId)
+
+        val accessTokenTTL = 15.minutes
+
+        val jwtScopes = possibleScopes.joinToString(" ")
+
+        val tokens = jwtTokenGenerator.generateOAuthTokenPair(
+            clientId = entity.clientId,
+            scopes = jwtScopes,
+            createRefreshToken = false,
+            accessTokenExpiry = accessTokenTTL,
+            responseType = OAuth2GrantTypes.CLIENT_CREDENTIALS
+        )
+
+        return OAuth2TokenResponseDto(
+            accessToken = tokens.accessToken,
+            scopes = jwtScopes,
+            expiry = accessTokenTTL.inWholeMilliseconds,
+            tokenType = "Bearer"
+        )
+    }
+
+    @OptIn(ExperimentalTime::class)
+    fun handleRefreshTokenGrant(
+        clientId: String,
+        token: String,
+        clientSecret: String? = null,
+        scopes: String? = null,
+        accessTokenTTL: Duration = 10.seconds,
+        refreshTokenTTL: Duration = 1.days,
+    ): OAuth2TokenResponseDto {
+        // validate the credentials
+        val entity = repository.findOAuth2ClientEntityByClientId(clientId)
+            ?: throw ClientNotFoundException(clientId)
+
+        if (!entity.isValid) throw ClientInvalidException()
+
+        // validate the client secret
+        if (clientSecret != null) {
+            val secretHash = tokenGenerator.hashToken(clientSecret)
+            if (secretHash != entity.secretHash) throw ClientAuthFailedException()
+        }
+
+        // introspect the token
+        val result = jwtTokenGenerator.introspectToken(token)
+            ?: throw InvalidAuthorizeOrTokenParmsException("Cannot decode the token")
+
+        // invalid token credentials
+        if (result.clientId != clientId || result.userId != entity.user?.id) throw ClientInvalidException()
+
+        // check if the scopes are matching
+        val tokenScopes = result.scope.split(" ").toSet()
+        val requestedScopes = scopes?.split(" ")?.toSet() ?: emptySet()
+
+        val finalScopes = if (requestedScopes.isNotEmpty()) {
+            // common in requested , token scopes and the entity
+            requestedScopes intersect tokenScopes intersect entity.scopes
+        } else tokenScopes intersect entity.scopes
+
+        val jwtScopes = finalScopes.joinToString(" ")
+
+        try {
+            // everything went well time to create a jwt
+            val tokens = jwtTokenGenerator.generateOAuthTokenPair(
+                user = entity.user,
+                clientId = entity.clientId,
+                scopes = jwtScopes,
+                accessTokenExpiry = accessTokenTTL,
+                refreshTokenExpiry = refreshTokenTTL
+            )
+
+            // get the id token info if available
+            val idToken = entity.user?.let { user ->
+                if (!finalScopes.contains("openid")) return@let null
+                createIdTokenForUser(
+                    scopes = finalScopes,
+                    clientId = clientId,
+                    user = user,
+                    accessToken = tokens.accessToken
+                )
+            }
+
+            return OAuth2TokenResponseDto(
+                accessToken = tokens.accessToken,
+                expiry = accessTokenTTL.inWholeMilliseconds,
+                oidcToken = idToken,
+                refreshToken = if (entity.allowRefreshTokens) tokens.refreshToken else null,
+                refreshTokenExpiry = if (entity.allowRefreshTokens) refreshTokenTTL.inWholeMilliseconds else 0L,
+                redirectURI = null,
+                scopes = jwtScopes,
+            )
+
+        } finally {
+            // revoke the token
+            val tokenHint = JWTTokenType.REFRESH_TOKEN
+            if (!blackListManager.isBlackListed(token, tokenHint)) {
+                val ttl = result.expiresAt.toKotlinInstant() - Clock.System.now()
+                if (ttl.isPositive()) blackListManager.addToBlackList(token, type = tokenHint, ttl)
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 package com.sam.keystone.infrastructure.jwt
 
+import com.sam.keystone.modules.oauth2.models.OAuth2GrantTypes
 import com.sam.keystone.modules.user.dto.response.TokenResponseDto
 import com.sam.keystone.modules.user.entity.User
 import com.sam.keystone.modules.user.models.JWTTokenType
@@ -19,30 +20,37 @@ class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
     lateinit var refreshTokenLife: String
 
     fun generateOAuthTokenPair(
-        user: User,
         clientId: String,
+        user: User? = null,
         scopes: String? = null,
+        createRefreshToken: Boolean = true,
         accessTokenExpiry: Duration? = null,
         refreshTokenExpiry: Duration? = null,
+        responseType: OAuth2GrantTypes = OAuth2GrantTypes.AUTHORIZATION_CODE,
     ): TokenResponseDto {
 
         val accessTokenDuration = accessTokenExpiry ?: (accessTokenLife).toInt().minutes
         val refreshTokenDuration = refreshTokenExpiry ?: (refreshTokenLife).toInt().days
 
-        val baseMap: Map<String, Any?> = mapOf(
-            JWT_CLAIM_USER_NAME to user.userName,
-            JWT_CLAIM_USER_ID to user.id,
-            JWT_CLAIM_CLIENT_ID to clientId,
-            JWT_CLAIM_CLIENT_SCOPES to scopes
-        )
+
+        val baseMap: Map<String, Any?> = buildMap {
+            when (responseType) {
+                OAuth2GrantTypes.AUTHORIZATION_CODE -> put(JWTClaims.JWT_CLAIM_SUB, user?.id ?: -1L)
+                OAuth2GrantTypes.REFRESH_TOKEN -> put(JWTClaims.JWT_CLAIM_SUB, user?.id ?: -1L)
+                OAuth2GrantTypes.CLIENT_CREDENTIALS -> put(JWTClaims.JWT_CLAIM_SUB, clientId)
+            }
+            put(JWTClaims.JWT_CLAIM_CLIENT_ID, clientId)
+            put(JWTClaims.JWT_CLAIM_CLIENT_SCOPES, scopes)
+        }
 
         val accessToken = generator.generateToken(
             timeToLive = accessTokenDuration,
-            claims = baseMap + mapOf(JWT_CLAIM_TOKEN_TYPE to JWTTokenType.ACCESS_TOKEN.name)
+            claims = baseMap + mapOf(JWTClaims.JWT_CLAIM_TOKEN_TYPE to JWTTokenType.ACCESS_TOKEN.name)
         )
-        val refreshToken = generator.generateToken(
+        val refreshToken = if (!createRefreshToken || user == null) null
+        else generator.generateToken(
             timeToLive = refreshTokenDuration,
-            claims = baseMap + mapOf(JWT_CLAIM_TOKEN_TYPE to JWTTokenType.REFRESH_TOKEN.name)
+            claims = baseMap + mapOf(JWTClaims.JWT_CLAIM_TOKEN_TYPE to JWTTokenType.REFRESH_TOKEN.name)
         )
 
         return TokenResponseDto(
@@ -51,15 +59,20 @@ class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
         )
     }
 
-    fun introspectToken(token: String): OAuth2IntrospectionResult? {
+    fun introspectToken(
+        token: String,
+        tokenHint: JWTTokenType = JWTTokenType.ACCESS_TOKEN,
+    ): OAuth2IntrospectionResult? {
         val result = generator.validateToken(token)
 
-        val clientId = result.claims.getOrDefault(JWT_CLAIM_CLIENT_ID, null)?.asString()
-        val scopes = result.claims.getOrDefault(JWT_CLAIM_CLIENT_SCOPES, null)?.asString()
-        val userId = result.claims.getOrDefault(JWT_CLAIM_USER_ID, null)?.asLong()
-        val tokenTypeString = result.claims.getOrDefault(JWT_CLAIM_TOKEN_TYPE, null)?.asString()
+        val clientId = result.claims.getOrDefault(JWTClaims.JWT_CLAIM_CLIENT_ID, null)?.asString()
+        val scopes = result.claims.getOrDefault(JWTClaims.JWT_CLAIM_CLIENT_SCOPES, null)?.asString()
+        val userId = result.claims.getOrDefault(JWTClaims.JWT_CLAIM_USER_ID, null)?.asLong()
+        val tokenTypeString = result.claims.getOrDefault(JWTClaims.JWT_CLAIM_TOKEN_TYPE, null)?.asString()
 
         if (clientId == null || scopes == null || userId == null || tokenTypeString == null) return null
+        val probableToken = JWTTokenType.valueOf(tokenTypeString)
+        if (probableToken != tokenHint) return null
 
         return OAuth2IntrospectionResult(
             active = !result.isExpired,
@@ -68,15 +81,7 @@ class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
             scope = scopes,
             issuedAt = result.tokenCreateInstant,
             expiresAt = result.tokenExpiryInstant,
-            tokenType = JWTTokenType.valueOf(tokenTypeString)
+            tokenType = probableToken
         )
-    }
-
-    companion object {
-        private const val JWT_CLAIM_CLIENT_ID = "oauth2_client_id"
-        private const val JWT_CLAIM_CLIENT_SCOPES = "oauth2_client_scopes"
-        private const val JWT_CLAIM_USER_NAME = "user_name"
-        private const val JWT_CLAIM_USER_ID = "user_id"
-        private const val JWT_CLAIM_TOKEN_TYPE = "token_type"
     }
 }

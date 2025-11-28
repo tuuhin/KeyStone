@@ -102,4 +102,10 @@ class OAuth2ExceptionHandler {
             path = request.requestURI
         )
     }
+
+    @ExceptionHandler(ClientAuthFailedException::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun handleException(ex: ClientAuthFailedException, request: HttpServletRequest): ErrorResponseDto {
+        return ErrorResponseDto(message = ex.message ?: "", error = ex.error, path = request.requestURI)
+    }
 }
