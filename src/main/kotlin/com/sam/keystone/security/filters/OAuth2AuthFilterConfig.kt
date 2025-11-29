@@ -28,6 +28,12 @@ class OAuth2AuthFilterConfig(
 
     private val _logger = LoggerFactory.getLogger(this::class.java)
 
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val isResourceRoute = request.requestURI.startsWith("/resource")
+        val isOpenIDRoute = request.requestURI.startsWith("/openid")
+        return !isResourceRoute && !isOpenIDRoute
+    }
+
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,

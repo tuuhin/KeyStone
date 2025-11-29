@@ -1,4 +1,4 @@
-package com.sam.keystone.modules.oauth2
+package com.sam.keystone.modules.oauth2.controllers
 
 import com.sam.keystone.modules.core.dto.MessageResponseDto
 import com.sam.keystone.modules.oauth2.dto.OAuth2ClientListResponseDto
@@ -17,7 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 
 @RestController
-@RequestMapping("/oauth2/clients")
+@RequestMapping("/api/oauth2/clients")
 @Tag(
     name = "OAuth2 Client Management",
     description = "Manges crud operation associated with client"

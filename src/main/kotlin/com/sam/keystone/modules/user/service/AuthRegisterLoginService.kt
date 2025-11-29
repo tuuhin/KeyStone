@@ -20,6 +20,7 @@ import jakarta.transaction.Transactional
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.net.URLEncoder
+import kotlin.time.Duration
 
 @Service
 class AuthRegisterLoginService(
@@ -62,7 +63,11 @@ class AuthRegisterLoginService(
 
 
     @Transactional
-    fun loginUser(request: LoginUserRequest): TokenResponseDto {
+    fun loginUser(
+        request: LoginUserRequest,
+        createRefreshToken: Boolean = true,
+        accessTokenTTL: Duration? = null,
+    ): TokenResponseDto {
 
         val user = userRepository.findUserByUserName(request.userName)
         val foundUser = user ?: throw UserAuthException("Cannot find the given user")
@@ -75,7 +80,11 @@ class AuthRegisterLoginService(
             throw UserVerificationException("User not verified")
 
         // so the user exists
-        return jwtTokenManager.generateTokenPairs(foundUser)
+        return jwtTokenManager.generateTokenPairs(
+            user = foundUser,
+            accessTokenExpiry = accessTokenTTL,
+            createRefreshToken = createRefreshToken
+        )
     }
 
     @Transactional

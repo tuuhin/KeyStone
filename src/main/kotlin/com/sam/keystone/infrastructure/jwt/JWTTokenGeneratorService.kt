@@ -20,19 +20,24 @@ class JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
     @Value($$"${jwt.refresh-token-expiry-days}")
     lateinit var refreshTokenLife: String
 
-    fun generateTokenPairs(user: User): TokenResponseDto {
+    fun generateTokenPairs(
+        user: User,
+        createRefreshToken: Boolean = true,
+        accessTokenExpiry: Duration? = null,
+        refreshTokenExpiry: Duration? = null,
+    ): TokenResponseDto {
 
-        val accessTokenDuration = (accessTokenLife).toInt().minutes
-        val refreshTokenDuration = (refreshTokenLife).toInt().days
+        val accessTokenDuration = accessTokenExpiry ?: (accessTokenLife).toInt().minutes
+        val refreshTokenDuration = refreshTokenExpiry ?: (refreshTokenLife).toInt().days
 
         val accessToken = generator.generateToken(
             timeToLive = accessTokenDuration,
             claims = prepareClaims(user, JWTTokenType.ACCESS_TOKEN)
         )
-        val refreshToken = generator.generateToken(
+        val refreshToken = if (createRefreshToken) generator.generateToken(
             timeToLive = refreshTokenDuration,
             claims = prepareClaims(user, JWTTokenType.REFRESH_TOKEN)
-        )
+        ) else null
 
         return TokenResponseDto(
             accessToken = accessToken,

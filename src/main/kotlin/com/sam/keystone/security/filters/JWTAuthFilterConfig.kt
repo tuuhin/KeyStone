@@ -25,6 +25,11 @@ class JWTAuthFilterConfig(
 
     private val _logger = LoggerFactory.getLogger(this::class.java)
 
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val shouldFilter = request.requestURI.startsWith("/api")
+        return !shouldFilter
+    }
+
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
@@ -62,6 +67,6 @@ class JWTAuthFilterConfig(
         )
         SecurityContextHolder.getContext().authentication = newAuth
 
-        _logger.info("NEW USER IS ATTACHED")
+        _logger.info("USER CONTEXT ADDED VIA JWT BEARER")
     }
 }
