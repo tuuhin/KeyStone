@@ -3,7 +3,7 @@ package com.sam.keystone.infrastructure.redis
 import com.sam.keystone.security.models.CodeChallengeMethods
 import com.sam.keystone.security.models.PKCEModel
 import org.slf4j.LoggerFactory
-import org.springframework.data.redis.core.StringRedisTemplate
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import kotlin.time.Duration
@@ -12,7 +12,7 @@ import kotlin.time.toJavaDuration
 
 @Component
 class OAuth2CodePKCEStore(
-    private val template: StringRedisTemplate,
+    private val template: RedisTemplate<String, Any>,
 ) {
 
     private val _logger by lazy { LoggerFactory.getLogger(this::class.java) }

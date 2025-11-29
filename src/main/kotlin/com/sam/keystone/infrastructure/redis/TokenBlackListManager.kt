@@ -1,14 +1,14 @@
 package com.sam.keystone.infrastructure.redis
 
 import com.sam.keystone.modules.user.models.JWTTokenType
-import org.springframework.data.redis.core.StringRedisTemplate
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Component
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
 @Component
-class TokenBlackListManager(private val template: StringRedisTemplate) {
+class TokenBlackListManager(private val template: RedisTemplate<String, Any>) {
 
     @Synchronized
     fun addToBlackList(token: String, type: JWTTokenType = JWTTokenType.REFRESH_TOKEN, expiry: Duration = 5.minutes) {
