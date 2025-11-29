@@ -40,11 +40,10 @@ class OAuth2AuthService(
     private val blackListManager: TokenBlackListManager,
 ) {
 
-    private fun validateRequestParameters(
+    fun validateClientIdWithParameters(
         clientId: String,
         redirectURI: String,
         scope: String? = null,
-        grantType: String? = null,
     ): OAuth2ClientEntity {
 
         val entity = repository.findOAuth2ClientEntityByClientId(clientId)
@@ -60,13 +59,6 @@ class OAuth2AuthService(
             val intersection = requestedScopes.intersect(entity.scopes)
             if (intersection.isEmpty()) throw InvalidAuthorizeOrTokenParmsException(clientId)
         }
-
-        // check for grant types
-        grantType?.split(" ")?.let { types ->
-            val intersection = types.intersect(entity.grantTypes)
-            if (intersection.isEmpty()) throw InvalidAuthorizeOrTokenParmsException(clientId)
-        }
-
         return entity
     }
 
@@ -79,10 +71,13 @@ class OAuth2AuthService(
         maxTokenTTLInSeconds: Int = 0,
         scope: String? = null,
         nonce: String? = null,
+        user: User? = null,
     ): OAuth2AuthorizationResponse {
         if (responseType != OAuth2ResponseType.CODE) throw OAuth2InvalidResponseTypeException()
 
-        val entity = validateRequestParameters(clientId, redirectURI, scope, null)
+        val entity = validateClientIdWithParameters(clientId, redirectURI, scope)
+
+        if (entity.user != user) throw ClientInvalidException()
 
         // generate a random token
         val newAuthToken = tokenGenerator.generateRandomToken(16, CodeEncoding.HEX_LOWERCASE)
@@ -129,7 +124,7 @@ class OAuth2AuthService(
         if (authCode.isNotBlank()) throw InvalidAuthorizeOrTokenParmsException("Code cannot be empty or blank ")
 
         //validate parameters
-        val entity = validateRequestParameters(clientId, redirect)
+        val entity = validateClientIdWithParameters(clientId, redirect)
 
         val codeVerifierPresent = codeVerifier != null && codeVerifier.isNotBlank()
         val clientSecretPresent = clientSecret != null && clientSecret.isNotBlank()

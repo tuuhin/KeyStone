@@ -1,20 +1,16 @@
-package com.sam.keystone.modules.oauth2
+package com.sam.keystone.modules.oauth2.controllers
 
 import com.nimbusds.jose.jwk.JWKSet
-import com.sam.keystone.modules.oauth2.dto.OAuth2AuthorizationResponse
 import com.sam.keystone.modules.oauth2.dto.OAuth2RevokeResponseDto
 import com.sam.keystone.modules.oauth2.dto.OAuth2TokenIntrospectResponseDto
 import com.sam.keystone.modules.oauth2.dto.OAuth2TokenResponseDto
 import com.sam.keystone.modules.oauth2.models.OAuth2GrantTypes
-import com.sam.keystone.modules.oauth2.models.OAuth2ResponseType
 import com.sam.keystone.modules.oauth2.services.OAuth2AuthService
 import com.sam.keystone.modules.oauth2.services.OAuth2TokenService
 import com.sam.keystone.modules.user.models.JWTTokenType
-import com.sam.keystone.security.models.CodeChallengeMethods
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Schema
-import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -31,55 +27,6 @@ class OAuth2AuthController(
     private val tokenService: OAuth2TokenService,
     private val jwkSet: JWKSet,
 ) {
-
-    @GetMapping("/authorize")
-    @Operation(summary = "Authorize a client")
-    @SecurityRequirement(name = "Authorization")
-    fun authorizeClient(
-        @Parameter(
-            description = "Authorization response type",
-            example = "code",
-            schema = Schema(allowableValues = ["code"])
-        )
-        @RequestParam("response_type", required = true)
-        responseType: OAuth2ResponseType,
-        @RequestParam("client_id")
-        clientId: String,
-        @RequestParam("redirect_uri")
-        redirectUri: String,
-        @Parameter(description = "List of scopes to be provided, should be space separated")
-        @RequestParam("scope", required = false)
-        scope: String?,
-        @Parameter(name = "max_age", description = "Max age of the authorization code in seconds", required = false)
-        @RequestParam("max_age")
-        maxAge: Int = 120,
-        @RequestParam(value = "code_challenge", required = true)
-        codeChallenge: String,
-        @Parameter(
-            example = "plain",
-            schema = Schema(allowableValues = ["plain", "sha256"])
-        )
-        @RequestParam(value = "code_challenge_method", required = true)
-        codeChallengeMethod: CodeChallengeMethods,
-        @RequestParam(value = "state", required = true)
-        state: String,
-        @RequestParam(value = "nonce", required = false)
-        nonce: String? = null,
-    ): OAuth2AuthorizationResponse {
-        val response = authService.createTokenAndStorePKCE(
-            responseType = responseType,
-            clientId = clientId,
-            redirectURI = redirectUri,
-            scope = scope,
-            maxTokenTTLInSeconds = maxAge,
-            challengeCode = codeChallenge,
-            challengeCodeMethod = codeChallengeMethod,
-            nonce = nonce,
-        )
-
-        return response.copy(state = state)
-    }
-
 
     @PostMapping(
         "/token",
