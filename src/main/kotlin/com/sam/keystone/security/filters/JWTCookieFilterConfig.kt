@@ -2,11 +2,15 @@ package com.sam.keystone.security.filters
 
 import com.sam.keystone.infrastructure.jwt.JWTTokenGeneratorService
 import com.sam.keystone.modules.user.repository.UserRepository
+import com.sam.keystone.security.exception.JWTCookieNotFoundException
+import com.sam.keystone.security.exception.JWTTokenExpiredException
+import com.sam.keystone.security.exception.RequestedUserNotFoundException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
@@ -21,17 +25,9 @@ class JWTCookieFilterConfig(
     private val _logger by lazy { LoggerFactory.getLogger(this::class.java) }
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
-        val otherModeAuthFilters = arrayOf("/api", "/openid", "/resources")
-        val swaggerPattens = arrayOf("/swagger", "/v3/api-docs", "v3/api-docs")
-        val fullyOpenRoutes = arrayOf("/login")
-
-        val shouldNotRoutes = buildList {
-            addAll(otherModeAuthFilters)
-            addAll(swaggerPattens)
-            addAll(fullyOpenRoutes)
-        }
-        val condition = shouldNotRoutes.any { request.requestURI.startsWith(it) }
-        return condition
+        val shouldFilter = arrayOf("/oauth2/authorize", "/home")
+        val condition = shouldFilter.any { request.requestURI.startsWith(it) }
+        return !condition
     }
 
     override fun doFilterInternal(
@@ -40,25 +36,25 @@ class JWTCookieFilterConfig(
         filterChain: FilterChain,
     ) {
         try {
-            addAuthorizedUser(request, response)
+            addAuthorizedUser(request)
             filterChain.doFilter(request, response)
         } catch (e: Exception) {
-            e.printStackTrace()
+            _logger.error("FILTER CHAIN EXCEPTION", e)
+            if (e is AuthenticationException) response.sendRedirect("/login")
         }
     }
 
-    private fun addAuthorizedUser(request: HttpServletRequest, response: HttpServletResponse) {
+    private fun addAuthorizedUser(request: HttpServletRequest) {
 
         // get the request cookies
         val cookies = request.cookies?.toSet() ?: emptySet()
-        val tokenCookie = cookies.find { it.name == "access_token" } ?: return response.sendRedirect("/login")
+        val tokenCookie = cookies.find { it.name == "access_token" } ?: throw JWTCookieNotFoundException()
 
         // authenticate via the cookie
-        val (userId, _) = jwtTokenService.validateToken(tokenCookie.value)
-            ?: return response.sendRedirect("/login")
+        val (userId, _) = jwtTokenService.validateToken(tokenCookie.value) ?: throw JWTTokenExpiredException()
 
         // get the user if not route to log in
-        val user = repository.findUserById(userId) ?: return response.sendRedirect("/login")
+        val user = repository.findUserById(userId) ?: throw RequestedUserNotFoundException()
 
         val newAuth = UsernamePasswordAuthenticationToken.authenticated(
             user,

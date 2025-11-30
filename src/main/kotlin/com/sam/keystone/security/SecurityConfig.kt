@@ -1,5 +1,7 @@
 package com.sam.keystone.security
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.sam.keystone.modules.core.dto.ErrorResponseDto
 import com.sam.keystone.security.filters.JWTAuthFilterConfig
 import com.sam.keystone.security.filters.JWTCookieFilterConfig
 import com.sam.keystone.security.filters.OAuth2AuthFilterConfig
@@ -20,6 +22,7 @@ class SecurityConfig(
     private val jwtAuthFilter: JWTAuthFilterConfig,
     private val jwtCookieFilter: JWTCookieFilterConfig,
     private val oauth2Filter: OAuth2AuthFilterConfig,
+    private val objectMapper: ObjectMapper,
 ) {
 
     @Bean
@@ -50,7 +53,7 @@ class SecurityConfig(
     @Bean
     @Order(2)
     fun resourceServerSecurityChain(http: HttpSecurity): SecurityFilterChain {
-        // allow oauth2 and later resources server
+        // every request should be authenticated
         return http
             .securityMatcher("/openid/**", "/resources/**")
             .csrf { it.disable() }
@@ -64,19 +67,21 @@ class SecurityConfig(
     @Bean
     @Order(3)
     fun defaultFilterChain(http: HttpSecurity): SecurityFilterChain {
-        val swaggerPattens =
-            arrayOf("/swagger-ui/**", "/swagger.html", "/v3/api-docs", "v3/api-docs/swagger-config")
-
         return http
-            .authorizeHttpRequests { config ->
-                config.requestMatchers(*swaggerPattens, "/login**").permitAll()
-                    .anyRequest().authenticated()
+            .csrf { config ->
+                config.ignoringRequestMatchers("/oauth2/token", "/oauth2/revoke", "/oauth2/introspect")
             }
-            .sessionManagement { config -> config.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) }
+            .authorizeHttpRequests { config ->
+                config
+                    .requestMatchers("/home", "/oauth2/authorize").authenticated()
+                    .anyRequest().permitAll()
+            }
+            .sessionManagement { config -> config.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(jwtCookieFilter, UsernamePasswordAuthenticationFilter::class.java)
             .exceptionHandling { config ->
-                config.authenticationEntryPoint { _, res, exp ->
-                    exp.printStackTrace()
+                // authentication issues
+                config.authenticationEntryPoint { req, res, ex ->
+                    ex.printStackTrace()
                     res.sendRedirect("/login")
                 }
             }
@@ -86,6 +91,8 @@ class SecurityConfig(
     private val handleException = AuthenticationEntryPoint { _, response, authException ->
         response.contentType = "application/json"
         response.status = HttpServletResponse.SC_UNAUTHORIZED
-        response.writer.write("""{"error": "invalid_token", "error_description": "${authException.message}"}""")
+        val errorResponse = ErrorResponseDto(message = authException.message ?: "", error = "invalid_token")
+        val responseString = objectMapper.writeValueAsString(errorResponse)
+        response.writer.write(responseString)
     }
 }

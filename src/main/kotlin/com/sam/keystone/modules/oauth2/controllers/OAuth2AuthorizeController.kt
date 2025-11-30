@@ -93,7 +93,7 @@ class OAuth2AuthorizeController(
         @RequestParam("scope", required = false)
         scope: String? = null,
         @RequestParam("max_age")
-        maxAge: Int = 120,
+        maxAge: Int = 5,
         @RequestParam(value = "nonce", required = false)
         nonce: String? = null,
         @RequestParam(value = "decision")
@@ -101,32 +101,35 @@ class OAuth2AuthorizeController(
 
         @AuthenticationPrincipal user: User,
     ): String {
+        val resultURIBuilder = UriComponentsBuilder.fromUri(URI(redirectUri))
+        try {
+            //create the token
+            val response = authService.createTokenAndStorePKCE(
+                responseType = responseType,
+                clientId = clientId,
+                redirectURI = redirectUri,
+                scopes = scope,
+                maxTokenTTLInSeconds = maxAge,
+                challengeCode = codeChallenge,
+                challengeCodeMethod = codeChallengeMethod,
+                nonce = nonce,
+                user = user
+            )
 
-        //create the token
+            if (isAllowed) {
+                resultURIBuilder.queryParam("code", response.authCode)
+                resultURIBuilder.queryParam("state", state)
+            } else {
+                resultURIBuilder.queryParam("error", "access_denied")
+                resultURIBuilder.queryParam("error_message", "Client authorization rejected")
+            }
 
-        val response = authService.createTokenAndStorePKCE(
-            responseType = responseType,
-            clientId = clientId,
-            redirectURI = redirectUri,
-            scope = scope,
-            maxTokenTTLInSeconds = maxAge,
-            challengeCode = codeChallenge,
-            challengeCodeMethod = codeChallengeMethod,
-            nonce = nonce,
-            user = user
-        )
-
-        val resultURIBuilder = UriComponentsBuilder.fromUri(URI(response.redirect))
-
-        if (isAllowed) {
-            resultURIBuilder.queryParam("code", response.authCode)
-            resultURIBuilder.queryParam("state", state)
-        } else {
+        } catch (e: Exception) {
             resultURIBuilder.queryParam("error", "access_denied")
-            resultURIBuilder.queryParam("error_message", "Client authorization rejected")
+            resultURIBuilder.queryParam("error_message", e.message)
         }
-        val finalURI = resultURIBuilder.build()
 
+        val finalURI = resultURIBuilder.build()
         return "redirect:$finalURI"
     }
 }

@@ -13,10 +13,10 @@ import kotlin.time.Duration.Companion.minutes
 @Component
 class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
 
-    @Value($$"${jwt.access-token-expiry-minutes}")
+    @Value($$"${jwt.oauth2.access-token-expiry-minutes}")
     lateinit var accessTokenLife: String
 
-    @Value($$"${jwt.refresh-token-expiry-days}")
+    @Value($$"${jwt.oauth2.refresh-token-expiry-days}")
     lateinit var refreshTokenLife: String
 
     fun generateOAuthTokenPair(
@@ -55,7 +55,9 @@ class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
 
         return TokenResponseDto(
             accessToken = accessToken,
-            refreshToken = refreshToken
+            refreshToken = refreshToken,
+            accessTokenExpireInMillis = accessTokenDuration.inWholeMilliseconds,
+            refreshTokenExpiresInMillis = refreshTokenDuration.inWholeMilliseconds
         )
     }
 

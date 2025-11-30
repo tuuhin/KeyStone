@@ -41,7 +41,9 @@ class JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
 
         return TokenResponseDto(
             accessToken = accessToken,
-            refreshToken = refreshToken
+            refreshToken = refreshToken,
+            accessTokenExpireInMillis = accessTokenDuration.inWholeMilliseconds,
+            refreshTokenExpiresInMillis = refreshTokenDuration.inWholeMilliseconds
         )
     }
 
