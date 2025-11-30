@@ -1,10 +1,7 @@
 package com.sam.keystone.modules.oauth2.controllers
 
 import com.sam.keystone.modules.core.dto.MessageResponseDto
-import com.sam.keystone.modules.oauth2.dto.OAuth2ClientListResponseDto
-import com.sam.keystone.modules.oauth2.dto.OAuth2ClientResponseDto
-import com.sam.keystone.modules.oauth2.dto.RegisterClientRequestDto
-import com.sam.keystone.modules.oauth2.dto.RegisterClientResponseDto
+import com.sam.keystone.modules.oauth2.dto.*
 import com.sam.keystone.modules.oauth2.services.OAuth2ClientService
 import com.sam.keystone.modules.user.entity.User
 import io.swagger.v3.oas.annotations.Operation
@@ -63,7 +60,7 @@ class OAuth2ManagementController(
     }
 
 
-    @PostMapping("/{clientId}/regenerate_secret", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @PostMapping("/regenerate_secret/{clientId}", produces = [MediaType.APPLICATION_JSON_VALUE])
     @Operation(summary = "Regenerate a new client secret discarding the previous one")
     fun regenerateNewSecret(
         @PathVariable clientId: String,
@@ -81,5 +78,15 @@ class OAuth2ManagementController(
         @AuthenticationPrincipal currentUser: User,
     ): OAuth2ClientResponseDto {
         return service.updateClientMetaData(clientId, currentUser, request)
+    }
+
+    @PatchMapping("/status/{clientId}", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(summary = "Invalidate or validate the client")
+    fun validateOrInvalidateClient(
+        @PathVariable clientId: String,
+        @RequestBody request: OAuth2ClientStatusRequestDto,
+        @AuthenticationPrincipal currentUser: User,
+    ): OAuth2ClientResponseDto {
+        return service.validateClient(clientId, currentUser, request.isValid)
     }
 }

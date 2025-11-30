@@ -29,5 +29,8 @@ data class RegisterClientRequestDto(
 
     @get:JsonIgnore
     val validGrantTypes: Set<String>
-        get() = grantType.intersect(OAuth2GrantTypes.grants)
+        get() {
+            val grants = if (refreshTokens) grantType + OAuth2GrantTypes.REFRESH_TOKEN.value else grantType
+            return grants.intersect(OAuth2GrantTypes.grants)
+        }
 }

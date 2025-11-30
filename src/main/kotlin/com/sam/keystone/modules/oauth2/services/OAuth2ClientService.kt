@@ -65,6 +65,19 @@ class OAuth2ClientService(
         return entity.toDto()
     }
 
+    fun validateClient(clientId: String, user: User, isValid: Boolean): OAuth2ClientResponseDto {
+
+        val entity = repository.findOAuth2ClientEntityByClientIdAndUser(clientId, user)
+            ?: throw ClientNotFoundException(clientId)
+
+        val updated = entity.also { entity ->
+            entity.isValid = isValid
+        }
+        val saveResult = repository.save(updated)
+
+        return saveResult.toDto()
+    }
+
     fun updateClientMetaData(clientId: String, user: User, request: RegisterClientRequestDto): OAuth2ClientResponseDto {
 
         val isInvalid = request.redirectURLs.any { url -> !URIValidator.isValid(url) }

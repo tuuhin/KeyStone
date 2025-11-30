@@ -27,7 +27,7 @@ class OAuth2ClientEntity(
     val user: User? = null,
 
     @Column(name = "is_valid")
-    val isValid: Boolean = true,
+    var isValid: Boolean = true,
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -58,13 +58,14 @@ class OAuth2ClientEntity(
 
     @Column(name = "updated_at")
     var updatedAt: Instant = Instant.now(),
-
-    @Column(name = "allow_refresh_tokens")
-    val allowRefreshTokens: Boolean = false,
 ) {
 
     @PreUpdate
     fun onUpdate() {
         updatedAt = Instant.now()
     }
+
+    @get:Transient
+    val allowRefreshTokens: Boolean
+        get() = grantTypes.contains("refresh_token")
 }
