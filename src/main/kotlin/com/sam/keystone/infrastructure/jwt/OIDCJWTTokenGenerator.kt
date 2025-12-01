@@ -11,8 +11,8 @@ class OIDCJWTTokenGenerator(private val generator: JWTKeysGenerator) {
     fun generateOIDCToken(
         user: User,
         clientId: String,
-        nonce: String,
         tokenHash: String,
+        nonce: String? = null,
         includeEmail: Boolean = false,
         includeProfile: Boolean = false,
         tokenExpiry: Duration = 2.hours,
@@ -23,12 +23,12 @@ class OIDCJWTTokenGenerator(private val generator: JWTKeysGenerator) {
             put(JWTClaims.JWT_CLAIM_AUDIENCE, clientId)
             put(JWTClaims.JWT_CLAIM_NONCE, nonce)
             put(JWTClaims.JWT_TOKEN_AT_HASH, tokenHash)
+            put(JWTClaims.JWT_CLAIM_USER_NAME, user.userName)
             if (includeEmail) {
                 put(JWTClaims.JWT_OPEN_ID_CLAIM_EMAIL, user.email)
                 put(JWTClaims.JWT_OPEN_ID_CLAIM_EMAIL_VERIFIED, (user.verifyState?.isVerified ?: false))
             }
             if (includeProfile) {
-                put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_NAME, user.userName)
                 put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_AVATAR, user.profile?.avatarUrl)
                 put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_FULL_NAME, user.profile?.fullName)
             }

@@ -15,10 +15,10 @@
                 <h5 class="fw-semibold text-dark">Permissions Requested:</h5>
 
                 <ul class="scope-list">
-                    {% for scope in scopes %}
+                    {% for s in scopes_list %}
                     <li class="scope-item">
                         <span class="icon">✓</span>
-                        <span>{{ scope }}</span>
+                        <span>{{ s }}</span>
                     </li>
                     {% endfor %}
                 </ul>
@@ -28,16 +28,28 @@
             <div class="d-grid gap-2">
                 <form method="POST" action="/oauth2/authorize" id="allow-access-form">
                     <input type="hidden" name="response_type" value="{{ response_type }}">
-                    <input type="hidden" name="nonce" value="{{ nonce }}">
-                    <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
-                    <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method }}">
-                    <input type="hidden" name="max_age" value="{{ max_age }}">
-                    <input type="hidden" name="scopes" value="{{ scopes }}">
-                    <input type="hidden" name="state" value="{{ state }}">
-                    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
                     <input type="hidden" name="client_id" value="{{ client_id }}">
+                    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
                     <input type="hidden" name="decision" value="true">
                     <input type="hidden" name="{{ _csrf.parameterName }}" value="{{ _csrf.token }}">
+                    {% if nonce is not null %}
+                    <input type="hidden" name="nonce" value="{{ nonce }}">
+                    {% endif %}
+                    {% if code_challenge is not null%}
+                    <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
+                    {% endif %}
+                    {% if code_challenge_method is not null %}
+                    <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method }}">
+                    {% endif %}
+                    {% if max_age is not null %}
+                    <input type="hidden" name="max_age" value="{{ max_age }}">
+                    {% endif %}
+                    {% if scopes is not null %}
+                    <input type="hidden" name="scopes" value="{{ scopes }}">
+                    {% endif %}
+                    {% if state is not null %}
+                    <input type="hidden" name="state" value="{{ state }}">
+                    {% endif %}
                     <button type="submit" class="btn btn-success btn-lg w-100 fw-bold mb-3 rounded-pill">
                         Allow Access
                     </button>
@@ -45,16 +57,28 @@
 
                 <form method="POST" action="/oauth2/authorize">
                     <input type="hidden" name="response_type" value="{{ response_type }}">
-                    <input type="hidden" name="nonce" value="{{ nonce }}">
-                    <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
-                    <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method }}">
-                    <input type="hidden" name="max_age" value="{{ max_age }}">
-                    <input type="hidden" name="scopes" value="{{ scopes }}">
-                    <input type="hidden" name="state" value="{{ state }}">
-                    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
                     <input type="hidden" name="client_id" value="{{ client_id }}">
+                    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
                     <input type="hidden" name="decision" value="false">
                     <input type="hidden" name="{{ _csrf.parameterName }}" value="{{ _csrf.token }}">
+                    {% if nonce is not null %}
+                    <input type="hidden" name="nonce" value="{{ nonce }}">
+                    {% endif %}
+                    {% if code_challenge is not null%}
+                    <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
+                    {% endif %}
+                    {% if code_challenge_method is not null %}
+                    <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method }}">
+                    {% endif %}
+                    {% if max_age is not null %}
+                    <input type="hidden" name="max_age" value="{{ max_age }}">
+                    {% endif %}
+                    {% if scopes is not null %}
+                    <input type="hidden" name="scopes" value="{{ scopes }}">
+                    {% endif %}
+                    {% if state is not null %}
+                    <input type="hidden" name="state" value="{{ state }}">
+                    {% endif %}
                     <button type="submit" class="btn btn btn-danger w-100 rounded-pill">
                         Cancel
                     </button>

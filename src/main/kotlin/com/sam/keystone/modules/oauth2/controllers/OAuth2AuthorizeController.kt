@@ -28,18 +28,18 @@ class OAuth2AuthorizeController(
 
         @RequestParam("response_type", required = true)
         responseType: OAuth2ResponseType = OAuth2ResponseType.CODE,
-        @RequestParam("client_id")
+        @RequestParam("client_id", required = true)
         clientId: String,
-        @RequestParam("redirect_uri")
+        @RequestParam("redirect_uri", required = true)
         redirectUri: String,
         @RequestParam("scope", required = false)
-        scope: String?,
-        @RequestParam("max_age")
+        scope: String? = null,
+        @RequestParam("max_age", required = false)
         maxAge: Int = 120,
-        @RequestParam(value = "code_challenge", required = true)
-        codeChallenge: String,
+        @RequestParam(value = "code_challenge", required = false)
+        codeChallenge: String? = null,
         @RequestParam(value = "code_challenge_method", required = true)
-        codeChallengeMethod: CodeChallengeMethods,
+        codeChallengeMethod: CodeChallengeMethods = CodeChallengeMethods.SHA_256,
         @RequestParam(value = "state", required = true)
         state: String,
         @RequestParam(value = "nonce", required = false)
@@ -56,13 +56,18 @@ class OAuth2AuthorizeController(
         // validate the given credentials
         val client = authService.validateClientIdWithParameters(clientId, redirectUri, scope)
 
+        // validate the current client
+        if (client.user?.id != user.id) return "redirect:/login"
+
         val requestedScopes = (scope?.split(" ")?.toSet() ?: emptySet()) union client.scopes
+        val requestedScopesString = requestedScopes.joinToString(" ")
 
         model.addAttribute("client_name", client.clientName)
         model.addAttribute("client_id", clientId)
         model.addAttribute("redirect_uri", redirectUri)
         model.addAttribute("state", state)
-        model.addAttribute("scopes", requestedScopes)
+        model.addAttribute("scopes_list", requestedScopes)
+        model.addAttribute("scopes", requestedScopesString)
         model.addAttribute("max_age", maxAge)
         model.addAttribute("code_challenge_method", codeChallengeMethod.simpleName)
         model.addAttribute("code_challenge", codeChallenge)
@@ -79,15 +84,15 @@ class OAuth2AuthorizeController(
     )
     fun authorizePostRequest(
         @RequestParam("response_type", required = true)
-        responseType: OAuth2ResponseType,
-        @RequestParam("client_id")
+        responseType: OAuth2ResponseType = OAuth2ResponseType.CODE,
+        @RequestParam("client_id", required = true)
         clientId: String,
-        @RequestParam("redirect_uri")
+        @RequestParam("redirect_uri", required = true)
         redirectUri: String,
         @RequestParam(value = "code_challenge", required = true)
-        codeChallenge: String,
+        codeChallenge: String? = null,
         @RequestParam(value = "code_challenge_method", required = true)
-        codeChallengeMethod: CodeChallengeMethods,
+        codeChallengeMethod: CodeChallengeMethods = CodeChallengeMethods.SHA_256,
         @RequestParam(value = "state", required = true)
         state: String,
         @RequestParam("scope", required = false)
@@ -104,7 +109,7 @@ class OAuth2AuthorizeController(
         val resultURIBuilder = UriComponentsBuilder.fromUri(URI(redirectUri))
         try {
             //create the token
-            val response = authService.createTokenAndStorePKCE(
+            val response = authService.createTokenAndStorePKCEIfProvided(
                 responseType = responseType,
                 clientId = clientId,
                 redirectURI = redirectUri,

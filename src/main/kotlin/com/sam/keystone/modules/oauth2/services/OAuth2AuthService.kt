@@ -21,6 +21,7 @@ import com.sam.keystone.security.models.CodeChallengeMethods
 import com.sam.keystone.security.models.PKCEModel
 import org.springframework.stereotype.Service
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.ExperimentalTime
@@ -49,26 +50,28 @@ class OAuth2AuthService(
         if (!entity.isValid) throw ClientInvalidException()
 
         // check if the provided data is correct
-        if (redirectURI !in entity.redirectUris) throw InvalidAuthorizeOrTokenParmsException(clientId)
+        if (redirectURI !in entity.redirectUris)
+            throw InvalidAuthorizeOrTokenParmsException("Invalid parameter redirect_uri")
 
         // check for matching scopes
         scope?.split(" ")?.let { requestedScopes ->
             val intersection = requestedScopes.intersect(entity.scopes)
-            if (intersection.isEmpty()) throw InvalidAuthorizeOrTokenParmsException(clientId)
+            if (intersection.isEmpty()) throw InvalidAuthorizeOrTokenParmsException("Scopes didn't match as requested")
         }
         return entity
     }
 
-    fun createTokenAndStorePKCE(
+    fun createTokenAndStorePKCEIfProvided(
         responseType: OAuth2ResponseType,
         clientId: String,
         redirectURI: String,
-        challengeCode: String,
-        challengeCodeMethod: CodeChallengeMethods,
+        challengeCode: String? = null,
+        challengeCodeMethod: CodeChallengeMethods = CodeChallengeMethods.PLAIN,
         maxTokenTTLInSeconds: Int = 0,
         scopes: String? = null,
         nonce: String? = null,
         user: User? = null,
+        codeTTL: Duration = 2.minutes,
     ): OAuth2AuthorizationResponse {
         if (responseType != OAuth2ResponseType.CODE) throw OAuth2InvalidResponseTypeException()
 
@@ -93,17 +96,19 @@ class OAuth2AuthService(
             clientId = clientId,
         )
 
-        val codeExchange = PKCEModel(challengeCode = challengeCode, challengeCodeMethod)
-
         // if it's an openid scope request, create a token too
         if ("openid" in clientScopes && nonce != null) {
-            authCodeStore.saveClientNonce(clientId = entity.clientId, nonce = nonce, expiry = tokenValidity)
+            authCodeStore.saveClientNonce(clientId = entity.clientId, nonce = nonce, expiry = codeTTL)
         }
 
         // save the token client and the challenge codes
-        authCodeStore.saveAuthTokenInfo(model = authTokenModel, expiry = tokenValidity)
-        challengesStore.saveClientPKCE(clientId = entity.clientId, pkCE = codeExchange, expiry = tokenValidity)
+        authCodeStore.saveAuthTokenInfo(model = authTokenModel, expiry = codeTTL)
 
+        // if pkce then challenge code will be provided
+        if (challengeCode != null) {
+            val codeExchange = PKCEModel(challengeCode = challengeCode, challengeCodeMethod)
+            challengesStore.saveClientPKCE(clientId = entity.clientId, pkCE = codeExchange, expiry = tokenValidity)
+        }
         // returns the newAuthToken
         return OAuth2AuthorizationResponse(
             authCode = newAuthToken,
@@ -131,11 +136,9 @@ class OAuth2AuthService(
         val codeVerifierPresent = codeVerifier != null && codeVerifier.isNotBlank()
         val clientSecretPresent = clientSecret != null && clientSecret.isNotBlank()
 
+        // code verifier gets priority if both are provided
         when {
-            codeVerifierPresent && clientSecretPresent ->
-                throw InvalidAuthorizeOrTokenParmsException("Request is ambiguous needed a single proof of authority")
-
-            codeVerifierPresent && !clientSecretPresent -> {
+            codeVerifierPresent -> {
                 val codeExchange = challengesStore.getCodeChallenges(entity.clientId) ?: throw PKCEInvalidException()
                 val isVerified = codeExchange.verifyHash(codeVerifier)
                 if (!isVerified) throw PKCEInvalidException()
@@ -147,7 +150,7 @@ class OAuth2AuthService(
                     throw InvalidAuthorizeOrTokenParmsException("Client was authorized with a different proof")
                 // hash the client secret and check if this is correct
                 val secretHash = tokenGenerator.hashToken(clientSecret)
-                if (entity.secretHash != secretHash) throw InvalidAuthorizeOrTokenParmsException(clientId)
+                if (entity.secretHash != secretHash) throw InvalidAuthorizeOrTokenParmsException("Invalid parameters cannot validate authenticity")
             }
 
             else -> throw InvalidAuthorizeOrTokenParmsException("No proof of authority")
@@ -327,7 +330,7 @@ class OAuth2AuthService(
     private fun createIdTokenForUser(scopes: Set<String>, clientId: String, user: User, accessToken: String): String? {
         if (!scopes.contains("openid")) return null
 
-        val savedNonce = authCodeStore.getClientNonce(clientId) ?: return null
+        val savedNonce = authCodeStore.getClientNonce(clientId)
         return oidcTokenGenerator.generateOIDCToken(
             user = user,
             clientId = clientId,

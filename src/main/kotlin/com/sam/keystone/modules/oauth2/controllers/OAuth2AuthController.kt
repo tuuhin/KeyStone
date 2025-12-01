@@ -69,7 +69,7 @@ class OAuth2AuthController(
         scopes: String? = null,
 
         @Parameter(description = "If used PK CE with code_challenge during auth otherwise ignore")
-        @RequestParam("code_challenge", required = false)
+        @RequestParam("code_verifier", required = false)
         codeVerifier: String = "",
 
         @RequestParam("state", required = false)
