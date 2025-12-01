@@ -29,9 +29,8 @@ class OIDCController(
     @GetMapping("openid/userinfo")
     @ResponseStatus(HttpStatus.OK)
     @Operation(summary = "Authenticated user identity")
-    @SecurityRequirement(name = "OAuth2 Authorization")
-    fun openIDUserInfo(@AuthenticationPrincipal user: OAuth2ClientUser): UserResponseDto? {
-
+    @SecurityRequirement(name = "OAuth2")
+    fun openIDUserInfo(@AuthenticationPrincipal user: OAuth2ClientUser): UserResponseDto {
         return service.readUserInfoWithScope(user)
     }
 

@@ -24,7 +24,7 @@ data class PKCEModel(
                 algorithm.digest(verifierCodeBytes)
             }
         }
-        val encodedResult = Base64.encode(hashedResult)
+        val encodedResult = Base64.UrlSafe.encode(hashedResult).trimEnd('=')
 
         return MessageDigest.isEqual(
             encodedResult.toByteArray(charset),
