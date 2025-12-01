@@ -38,9 +38,16 @@ class JWTCookieFilterConfig(
         try {
             addAuthorizedUser(request)
             filterChain.doFilter(request, response)
+        } catch (_: AuthenticationException) {
+            if (!request.requestURI.startsWith("/logout")) {
+                _logger.info("SETTING NEXT URI SESSION ")
+                request.session.setAttribute("next", request.requestURI)
+                request.session.setAttribute("next_query", request.queryString)
+            }
+            _logger.info("REDIRECTING TO LOG IN")
+            response.sendRedirect("/login")
         } catch (e: Exception) {
-            _logger.error("FILTER CHAIN EXCEPTION", e)
-            if (e is AuthenticationException) response.sendRedirect("/login")
+            _logger.error("UNWANTED ERROR", e)
         }
     }
 

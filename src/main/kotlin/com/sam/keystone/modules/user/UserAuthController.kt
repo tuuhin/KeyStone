@@ -44,13 +44,16 @@ class UserAuthController(
     }
 
     @GetMapping("logout")
-    fun logOutUser(response: HttpServletResponse): String {
+    fun logOutUser(request: HttpServletRequest, response: HttpServletResponse): String {
         val cancelCookie = Cookie("access_token", null).apply {
             path = "/"
             maxAge = 0
             isHttpOnly = true
             secure = true
         }
+        // clear the session and clear a blank cookie that expires
+        request.session.removeAttribute("next")
+        request.session.removeAttribute("next_query")
         response.addCookie(cancelCookie)
         return "redirect:/login"
     }
@@ -59,8 +62,20 @@ class UserAuthController(
     fun loginViaCredentials(
         @RequestParam username: String,
         @RequestParam password: String,
+        request: HttpServletRequest,
         response: HttpServletResponse,
     ): String {
+        // handle the redirect info
+        val nextURI = request.session.getAttribute("next")?.toString()
+        val queries = request.session.getAttribute("next_query")?.toString()
+        val redirectURI = nextURI?.let { uri ->
+            // clear the session attributes
+            request.session.removeAttribute("next")
+            request.session.removeAttribute("next_query")
+            // build the uri now
+            queries?.let { query -> "$uri?$query" } ?: uri
+        } ?: "/home"
+
         return try {
             val ttl = 30.minutes
             val results = loginService.loginUser(
@@ -75,7 +90,7 @@ class UserAuthController(
                 maxAge = ttl.inWholeSeconds.toInt()
             }
             response.addCookie(cookie)
-            "redirect:/home"
+            "redirect:$redirectURI"
         } catch (_: Exception) {
             "redirect:/login?error=true"
         }

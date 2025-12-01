@@ -2,13 +2,13 @@
 {% block title%} Authorize {{client_name}} {%endblock%}
 {%block body%}
 <div class="container p-4">
-    <div class="card consent-card">
+    <div class="card consent-card" id="base-container">
         <div class="card-body p-4 p-md-5">
             <div class="text-center mb-4">
                 <h2 class="card-title text-center fw-bold text-dark">Grant Access</h2>
             </div>
-            <p class="text-muted text-center mb-4">
-                The application **<span class="text-primary">{{ client_name }}</span>** requires your permission to
+            <p class="text-muted text-center mb-4 lead">
+                The application <span class="text-primary">{{ client_name }}</span> requires your permission to
                 access the following resources:
             </p>
             <div class="mb-4 p-3 bg-light rounded">
@@ -26,7 +26,7 @@
             </div>
 
             <div class="d-grid gap-2">
-                <form method="POST" action="/oauth2/authorize">
+                <form method="POST" action="/oauth2/authorize" id="allow-access-form">
                     <input type="hidden" name="response_type" value="{{ response_type }}">
                     <input type="hidden" name="nonce" value="{{ nonce }}">
                     <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
