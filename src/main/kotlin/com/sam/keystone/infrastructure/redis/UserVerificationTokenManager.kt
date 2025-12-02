@@ -1,32 +1,34 @@
 package com.sam.keystone.infrastructure.redis
 
 import com.sam.keystone.config.RandomTokenGeneratorConfig
-import org.springframework.data.redis.core.StringRedisTemplate
+import com.sam.keystone.config.models.CodeEncoding
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
 @Component
 class UserVerificationTokenManager(
-    private val template: StringRedisTemplate,
+    private val template: RedisTemplate<String, Any>,
     private val tokenGenerator: RandomTokenGeneratorConfig,
 ) {
 
+    @Transactional
     fun createVerificationToken(
         userId: Long,
         setRateLimit: Boolean = false,
-        expiry: Duration = 2.hours,
+        expiry: Duration = 30.minutes,
     ): String {
         val timeout = expiry.toJavaDuration()
         // delete the reverse token kv
-        template.opsForValue().get("$VERIFY_TOKEN_KV:$userId")?.let { token ->
+        template.opsForValue().getAndDelete("$VERIFY_TOKEN_KV:$userId")?.let { token ->
             template.delete("$VERIFY_TOKEN_REVERSE_KV:$token")
         }
         // create a new token
-        val token = tokenGenerator.generateRandomToken()
-        val hashedToken = tokenGenerator.hashToken(token)
+        val token = tokenGenerator.generateRandomToken(encoding = CodeEncoding.HEX_LOWERCASE)
+        val hashedToken = tokenGenerator.hashToken(token, encoding = CodeEncoding.HEX_LOWERCASE)
         // set the token with ttl
         template.opsForValue().set("$VERIFY_TOKEN_KV:$userId", hashedToken, timeout)
         template.opsForValue().set("$VERIFY_TOKEN_REVERSE_KV:$hashedToken", userId.toString(), timeout)
@@ -37,10 +39,16 @@ class UserVerificationTokenManager(
         return token
     }
 
+    @Transactional(readOnly = true)
     fun validateVerificationToken(token: String, deleteWhenDone: Boolean = true): Long? {
-        val hashedToken = tokenGenerator.hashToken(token)
-        val userId = template.opsForValue().get("$VERIFY_TOKEN_REVERSE_KV:$hashedToken")?.toLongOrNull()
-        if (userId != null && deleteWhenDone) deleteUserTokens(userId)
+        val hashedToken = tokenGenerator.hashToken(token, encoding = CodeEncoding.HEX_LOWERCASE)
+        val userIdTypeAny: Any? = template.opsForValue().get("$VERIFY_TOKEN_REVERSE_KV:$hashedToken")
+        val userId = userIdTypeAny?.toString()?.toLongOrNull()
+        if (userId != null && deleteWhenDone) {
+            template.opsForValue().getAndDelete("$VERIFY_TOKEN_KV:$userIdTypeAny")?.let { token ->
+                template.delete("$VERIFY_TOKEN_REVERSE_KV:$token")
+            }
+        }
         return userId
     }
 
@@ -48,10 +56,10 @@ class UserVerificationTokenManager(
         return template.hasKey("$VERIFY_TOKEN_RATE:$userId")
     }
 
+    @Transactional
     fun deleteUserTokens(userId: Long) {
-        template.opsForValue().get("$VERIFY_TOKEN_KV:$userId")?.let { token ->
+        template.opsForValue().getAndDelete("$VERIFY_TOKEN_KV:$userId")?.let { token ->
             template.delete("$VERIFY_TOKEN_REVERSE_KV:$token")
-            template.delete("$VERIFY_TOKEN_KV:$userId")
         }
     }
 

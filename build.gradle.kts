@@ -26,6 +26,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-authorization-server")
+    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
@@ -46,7 +47,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("com.sendgrid:sendgrid-java:4.10.3")
     // templating
-    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("io.pebbletemplates:pebble-spring-boot-starter:4.0.0")
 
     // spring test
     testImplementation("org.springframework.boot:spring-boot-starter-test")

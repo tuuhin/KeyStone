@@ -11,9 +11,9 @@ class RequestLoggingConfig {
     @Bean
     fun logFilter(): CommonsRequestLoggingFilter {
         val filter = CommonsRequestLoggingFilter().apply {
-            setIncludeQueryString(true);
-            setMaxPayloadLength(10000);
-            setIncludeHeaders(false);
+            setIncludeQueryString(true)
+            setMaxPayloadLength(10000)
+            setIncludeHeaders(false)
         }
         return filter
     }

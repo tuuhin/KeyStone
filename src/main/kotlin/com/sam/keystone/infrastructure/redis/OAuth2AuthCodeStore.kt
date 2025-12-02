@@ -2,7 +2,7 @@ package com.sam.keystone.infrastructure.redis
 
 import com.sam.keystone.security.models.AuthorizeTokenModel
 import org.slf4j.LoggerFactory
-import org.springframework.data.redis.core.StringRedisTemplate
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import kotlin.time.Duration
@@ -10,7 +10,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
 @Component
-class OAuth2AuthCodeStore(private val template: StringRedisTemplate) {
+class OAuth2AuthCodeStore(private val template: RedisTemplate<String, Any>) {
 
     private val logger by lazy { LoggerFactory.getLogger(OAuth2AuthCodeStore::class.java) }
 
@@ -93,7 +93,7 @@ class OAuth2AuthCodeStore(private val template: StringRedisTemplate) {
         val key = "$OIDC_NONCE:$clientId"
         val result = operation.getAndDelete(key)
         logger.debug("FOUND NONCE FOR OIDC :$key DELETING THIS NOW")
-        return result
+        return result?.toString()
     }
 
     companion object {

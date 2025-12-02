@@ -1,5 +1,7 @@
-package com.sam.keystone.modules.oauth2
+package com.sam.keystone.modules.oauth2.oidc
 
+import com.sam.keystone.infrastructure.oidc.OIDCConfiguration
+import com.sam.keystone.infrastructure.oidc.OIDCConfigurationDto
 import com.sam.keystone.modules.oauth2.services.OIDCService
 import com.sam.keystone.modules.user.dto.response.UserResponseDto
 import com.sam.keystone.security.models.OAuth2ClientUser
@@ -14,19 +16,27 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/openid")
+@RequestMapping("/")
 @Tag(
     name = "OpenID Connect",
     description = "Open ID connect routes"
 )
-@SecurityRequirement(name = "OAuth2 Authorization")
-class OIDCController(private val service: OIDCService) {
+class OIDCController(
+    private val service: OIDCService,
+    private val configuration: OIDCConfiguration,
+) {
 
-    @GetMapping("/userinfo")
-    @Operation(summary = "Authenticated user identity")
+    @GetMapping("openid/userinfo")
     @ResponseStatus(HttpStatus.OK)
-    fun openIDUserInfo(@AuthenticationPrincipal user: OAuth2ClientUser): UserResponseDto? {
-
+    @Operation(summary = "Authenticated user identity")
+    @SecurityRequirement(name = "OAuth2")
+    fun openIDUserInfo(@AuthenticationPrincipal user: OAuth2ClientUser): UserResponseDto {
         return service.readUserInfoWithScope(user)
+    }
+
+    @GetMapping("/.well-known/openid-configuration")
+    @ResponseStatus(HttpStatus.OK)
+    fun openIDConfiguration(): OIDCConfigurationDto {
+        return configuration.readOIDCConfiguration()
     }
 }

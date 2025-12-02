@@ -2,4 +2,4 @@ package com.sam.keystone.security.exception
 
 import org.springframework.security.core.AuthenticationException
 
-class JWTTokenExpiredException : AuthenticationException("Token is expired cannot work with this any more")
+class JWTCookieNotFoundException : AuthenticationException("Required cookie not found")

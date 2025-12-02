@@ -9,7 +9,7 @@ import kotlin.io.encoding.Base64
 @Component
 class RandomTokenGeneratorConfig {
 
-    private val _messageDigest by lazy { MessageDigest.getInstance("SHA-256") }
+    private val _messageDigest by lazy { MessageDigest.getInstance("SHA-256").apply { reset() } }
     private val _secureRandom by lazy { SecureRandom() }
 
     fun generateRandomToken(byteLength: Int = 32, encoding: CodeEncoding = CodeEncoding.BASE_64): String {
@@ -24,6 +24,7 @@ class RandomTokenGeneratorConfig {
     }
 
     fun hashToken(token: String, encoding: CodeEncoding = CodeEncoding.BASE_64): String {
+        _messageDigest.reset()
         val hash = _messageDigest.digest(token.toByteArray())
         return when (encoding) {
             CodeEncoding.BASE_64 -> Base64.encode(hash)

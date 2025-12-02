@@ -27,7 +27,7 @@ class OAuth2ClientEntity(
     val user: User? = null,
 
     @Column(name = "is_valid")
-    val isValid: Boolean = true,
+    var isValid: Boolean = true,
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -35,7 +35,7 @@ class OAuth2ClientEntity(
         joinColumns = [JoinColumn(name = "client_id", referencedColumnName = "client_id")]
     )
     @Column(name = "redirects")
-    val redirectUris: MutableSet<String> = mutableSetOf(),
+    var redirectUris: Set<String> = emptySet(),
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -43,7 +43,7 @@ class OAuth2ClientEntity(
         joinColumns = [JoinColumn(name = "client_id", referencedColumnName = "client_id")]
     )
     @Column(name = "scope")
-    val scopes: MutableSet<String> = mutableSetOf(),
+    var scopes: Set<String> = emptySet(),
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -51,20 +51,21 @@ class OAuth2ClientEntity(
         joinColumns = [JoinColumn(name = "client_id", referencedColumnName = "client_id")]
     )
     @Column(name = "grant_type")
-    val grantTypes: MutableSet<String> = mutableSetOf(),
+    var grantTypes: Set<String> = emptySet(),
 
     @Column(name = "created_at")
     val createdAt: Instant = Instant.now(),
 
     @Column(name = "updated_at")
     var updatedAt: Instant = Instant.now(),
-
-    @Column(name = "allow_refresh_tokens")
-    val allowRefreshTokens: Boolean = false,
 ) {
 
     @PreUpdate
     fun onUpdate() {
         updatedAt = Instant.now()
     }
+
+    @get:Transient
+    val allowRefreshTokens: Boolean
+        get() = grantTypes.contains("refresh_token")
 }

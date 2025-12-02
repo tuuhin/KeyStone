@@ -1,6 +1,7 @@
 package com.sam.keystone.security.models
 
 import com.auth0.jwt.interfaces.Claim
+import com.sam.keystone.infrastructure.jwt.JWTClaims
 import com.sam.keystone.security.exception.OAuth2ClientIDNotAttachedException
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -20,9 +21,9 @@ data class OAuth2ClientUser(
     override fun getName(): String? = username
 
     val clientId: String
-        get() = claims.getOrDefault("oauth2_client_id", null)?.asString()
+        get() = claims.getOrDefault(JWTClaims.JWT_CLAIM_CLIENT_ID, null)?.asString()
             ?: throw OAuth2ClientIDNotAttachedException()
 
     val userId: Long?
-        get() = claims.getOrDefault("user_id", null)?.asLong()
+        get() = claims.getOrDefault(JWTClaims.JWT_CLAIM_SUB, null)?.asLong()
 }
