@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 
@@ -45,19 +46,19 @@ class OAuth2AuthorizeController(
         @RequestParam(value = "nonce", required = false)
         nonce: String? = null,
         // required
-        @AuthenticationPrincipal user: User? = null,
+        @AuthenticationPrincipal user: User,
         model: Model,
         request: HttpServletRequest,
+        redirectAttr: RedirectAttributes,
     ): String? {
-
-        // redirect the user if not logged in
-        if (user == null) return "redirect:/login"
-
         // validate the given credentials
         val client = authService.validateClientIdWithParameters(clientId, redirectUri, scope)
 
         // validate the current client
-        if (client.user?.id != user.id) return "redirect:/login"
+        if (client.user?.id != user.id) {
+            redirectAttr.addFlashAttribute("error_message", "Incorrect user")
+            return "redirect:/login"
+        }
 
         val requestedScopes = (scope?.split(" ")?.toSet() ?: emptySet()) union client.scopes
         val requestedScopesString = requestedScopes.joinToString(" ")

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import kotlin.time.Duration.Companion.minutes
 
 @Controller
@@ -30,16 +31,9 @@ class UserAuthController(
     }
 
     @GetMapping("login")
-    fun loginScreen(
-        request: HttpServletRequest,
-        model: Model,
-        @RequestParam(required = false) error: String?,
-    ): String {
+    fun loginScreen(request: HttpServletRequest, model: Model): String {
         val csrfToken = request.getAttribute("_csrf") as CsrfToken
         model.addAttribute("_csrf", csrfToken)
-        if (error != null) {
-            model.addAttribute("error", "Invalid username or password")
-        }
         return "login"
     }
 
@@ -64,6 +58,7 @@ class UserAuthController(
         @RequestParam password: String,
         request: HttpServletRequest,
         response: HttpServletResponse,
+        redirectAttributes: RedirectAttributes,
     ): String {
         // handle the redirect info
         val nextURI = request.session.getAttribute("next")?.toString()
@@ -91,8 +86,9 @@ class UserAuthController(
             }
             response.addCookie(cookie)
             "redirect:$redirectURI"
-        } catch (_: Exception) {
-            "redirect:/login?error=true"
+        } catch (e: Exception) {
+            redirectAttributes.addFlashAttribute("error_message", e.message)
+            "redirect:/login"
         }
     }
 }

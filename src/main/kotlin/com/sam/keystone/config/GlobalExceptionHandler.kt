@@ -5,6 +5,7 @@ import com.sam.keystone.modules.core.dto.FieldValidationResponseDto
 import com.sam.keystone.security.exception.OAuth2ClientIDNotAttachedException
 import com.sam.keystone.security.exception.TooManyRequestException
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.FieldError
@@ -16,6 +17,9 @@ import org.springframework.web.bind.annotation.ResponseStatus
 
 @ControllerAdvice
 class GlobalExceptionHandler {
+
+    @Value($$"${debug}")
+    lateinit var isDebugMode: String
 
     @ExceptionHandler(TooManyRequestException::class)
     fun handlerUserVerification(ex: TooManyRequestException)
@@ -40,16 +44,6 @@ class GlobalExceptionHandler {
         )
     }
 
-    @ExceptionHandler(Exception::class)
-    fun handleGenericException(ex: Exception, request: HttpServletRequest): ResponseEntity<ErrorResponseDto> {
-        val response = ErrorResponseDto(
-            message = ex.message ?: "Internal server error",
-            error = "Server Error",
-            path = request.requestURI
-        )
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response)
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidationExceptions(
         ex: MethodArgumentNotValidException,
@@ -67,5 +61,16 @@ class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
             .body(response)
+    }
+
+    @ExceptionHandler(Exception::class)
+    fun handleGenericException(ex: Exception, request: HttpServletRequest): ResponseEntity<ErrorResponseDto> {
+        if (isDebugMode == "true") ex.printStackTrace()
+        val response = ErrorResponseDto(
+            message = ex.message ?: "Internal server error",
+            error = "Server Error",
+            path = request.requestURI
+        )
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response)
     }
 }

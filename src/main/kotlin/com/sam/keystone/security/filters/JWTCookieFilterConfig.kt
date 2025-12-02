@@ -25,7 +25,7 @@ class JWTCookieFilterConfig(
     private val _logger by lazy { LoggerFactory.getLogger(this::class.java) }
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
-        val shouldFilter = arrayOf("/oauth2/authorize", "/home")
+        val shouldFilter = arrayOf("/oauth2/authorize", "/home", "/login")
         val condition = shouldFilter.any { request.requestURI.startsWith(it) }
         return !condition
     }
@@ -36,14 +36,21 @@ class JWTCookieFilterConfig(
         filterChain: FilterChain,
     ) {
         try {
+            // we have an access token with an authorized user
             addAuthorizedUser(request)
+            // if request is to log in even if we have an authenticated user redirect user to home
+            if (request.requestURI.startsWith("/login")) {
+                response.sendRedirect("/home")
+                return
+            }
+            // continue the filter chain
             filterChain.doFilter(request, response)
         } catch (_: AuthenticationException) {
-            if (!request.requestURI.startsWith("/logout")) {
-                _logger.info("SETTING NEXT URI SESSION ")
-                request.session.setAttribute("next", request.requestURI)
-                request.session.setAttribute("next_query", request.queryString)
-            }
+            // set up the session info about the next uri
+            _logger.info("SETTING NEXT URI SESSION ")
+            request.session.setAttribute("next", request.requestURI)
+            request.session.setAttribute("next_query", request.queryString)
+            // redirect the user back to client
             _logger.info("REDIRECTING TO LOG IN")
             response.sendRedirect("/login")
         } catch (e: Exception) {
