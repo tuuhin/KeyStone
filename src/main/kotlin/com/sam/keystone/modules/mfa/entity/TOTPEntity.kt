@@ -20,6 +20,7 @@ class TOTPEntity(
     @Column(name = "is_totp_enabled", nullable = false)
     var isEnabled: Boolean = false,
 
+    // storing the totp secret as base 32 encoded
     @Column(name = "totp_secret_encrypted", nullable = false)
     var totpSecret: String = "",
 
@@ -29,7 +30,7 @@ class TOTPEntity(
         cascade = [CascadeType.ALL],
         orphanRemoval = true
     )
-    var backupCodes: MutableSet<TOTPBackupCodesEntity> = mutableSetOf(),
+    val backupCodes: Set<TOTPBackupCodesEntity> = emptySet(),
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

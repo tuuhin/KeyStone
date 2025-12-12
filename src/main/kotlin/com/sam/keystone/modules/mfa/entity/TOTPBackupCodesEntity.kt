@@ -17,7 +17,7 @@ class TOTPBackupCodesEntity(
     val totp: TOTPEntity? = null,
 
     @Column(name = "is_used", nullable = false)
-    val isUsed: Boolean = false,
+    var isUsed: Boolean = false,
 
     @Column(name = "totp_backup_code_hash", nullable = false)
     val backUpCode: String,

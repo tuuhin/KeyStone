@@ -1,5 +1,6 @@
 package com.sam.keystone.modules.user.entity
 
+import com.sam.keystone.modules.mfa.entity.TOTPEntity
 import com.sam.keystone.modules.user.models.UserRole
 import jakarta.persistence.*
 import org.springframework.security.core.GrantedAuthority
@@ -41,7 +42,11 @@ class User(
 
     @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], optional = false)
     var verifyState: UserVerifyInfo? = null,
-) : UserDetails {
+
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], optional = true, fetch = FetchType.LAZY)
+    var totpState: TOTPEntity? = null,
+
+    ) : UserDetails {
 
     override fun getAuthorities(): Collection<GrantedAuthority?> = listOf(SimpleGrantedAuthority(role.name))
 
