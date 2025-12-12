@@ -30,7 +30,7 @@ class SecurityConfig(
     fun apiAuthenticationChain(http: HttpSecurity): SecurityFilterChain {
         // user based uri
         return http
-            .securityMatcher("/api/auth/**", "/api/oauth2/clients/**")
+            .securityMatcher("/api/**")
             .csrf { it.disable() }
             .authorizeHttpRequests { config ->
                 config

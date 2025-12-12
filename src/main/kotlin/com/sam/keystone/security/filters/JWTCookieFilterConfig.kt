@@ -25,7 +25,8 @@ class JWTCookieFilterConfig(
     private val _logger by lazy { LoggerFactory.getLogger(this::class.java) }
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
-        val shouldFilter = arrayOf("/oauth2/authorize", "/home", "/login")
+        // put the authorize route list in here
+        val shouldFilter = arrayOf("/oauth2/authorize", "/home")
         val condition = shouldFilter.any { request.requestURI.startsWith(it) }
         return !condition
     }

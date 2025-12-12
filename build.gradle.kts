@@ -28,6 +28,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-oauth2-authorization-server")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+    implementation("dev.samstevens.totp:totp-spring-boot-starter:1.7.1")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
@@ -35,6 +37,10 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     runtimeOnly("org.hibernate.orm:hibernate-community-dialects")
     runtimeOnly("org.xerial:sqlite-jdbc:3.45.3.0")
+
+    // qr code
+    implementation("com.google.zxing:core:3.5.4")
+    implementation("commons-codec:commons-codec:1.17.0")
 
     // swagger docs
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
