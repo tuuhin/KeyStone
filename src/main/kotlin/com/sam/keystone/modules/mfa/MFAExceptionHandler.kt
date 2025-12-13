@@ -62,4 +62,15 @@ class MFAExceptionHandler {
         )
     }
 
+
+    @ExceptionHandler(MFAInvalidLoginChallengeException::class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    fun handleException(ex: MFAInvalidLoginChallengeException, request: HttpServletRequest): ErrorResponseDto {
+        return ErrorResponseDto(
+            message = ex.message ?: "Cannot validate the given challenge",
+            error = "Bad Request",
+            path = request.requestURI
+        )
+    }
+
 }

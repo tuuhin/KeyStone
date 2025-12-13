@@ -20,7 +20,7 @@ class TOTPEntity(
     @Column(name = "is_totp_enabled", nullable = false)
     var isEnabled: Boolean = false,
 
-    // storing the totp secret as base 32 encoded
+    // storing the totp secret as base 32 encrypted
     @Column(name = "totp_secret_encrypted", nullable = false)
     var totpSecret: String = "",
 

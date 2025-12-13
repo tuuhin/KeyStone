@@ -17,6 +17,7 @@ import com.sam.keystone.modules.mfa.repository.TOTPBackupCodeRepository
 import com.sam.keystone.modules.mfa.repository.TOTPRepository
 import com.sam.keystone.modules.user.entity.User
 import com.sam.keystone.modules.user.exceptions.UserAuthException
+import com.sam.keystone.modules.user.repository.UserRepository
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -27,9 +28,10 @@ class MFAEnableAndDisableService(
     private val encryptor: AESEncryptionLayer,
     private val backupCodeGenerator: BackupCodeGenerator,
     private val totpValidator: TOTPValidator,
+    private val passwordEncoder: PasswordEncoder,
     private val repository: TOTPRepository,
     private val backupCodeRepository: TOTPBackupCodeRepository,
-    private val passwordEncoder: PasswordEncoder,
+    private val userRepository: UserRepository,
 ) {
 
     @Transactional
@@ -118,11 +120,13 @@ class MFAEnableAndDisableService(
 
         if (!requestValidated) throw TOTPCodeInvalidException()
 
-        // delete all the backup codes
-        backupCodeRepository.deleteTOTPBackupCodesEntityByTotp(entity)
-
-        // delete the underlying totp entity
+        // delete the underlying totp entity this will automatically delete the associated back-up codes
         repository.delete(entity)
+
+        // update the token entry invalidating the previous tokens
+        // this should be a global logout
+        user.tokenVersion++
+        userRepository.save(user)
 
         // return the result
         return MFADisableResponseDto(true)

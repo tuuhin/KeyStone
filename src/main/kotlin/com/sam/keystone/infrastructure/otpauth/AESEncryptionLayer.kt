@@ -2,6 +2,7 @@ package com.sam.keystone.infrastructure.otpauth
 
 import com.sam.keystone.config.models.CodeEncoding
 import org.apache.commons.codec.binary.Base32
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -13,8 +14,11 @@ import kotlin.io.encoding.Base64
 @Component
 class AESEncryptionLayer(private val properties: OTPAuthProperties) {
 
+    private val _logger by lazy { LoggerFactory.getLogger("Encryption_Layer") }
+
     private val algorithm = "AES"
     private val transformation = "AES/CBC/PKCS5Padding"
+    private val ivBytesLength = 16
 
     private val _base32 by lazy { Base32() }
 
@@ -23,24 +27,29 @@ class AESEncryptionLayer(private val properties: OTPAuthProperties) {
         SecretKeySpec(decoded, 0, decoded.size, algorithm)
     }
 
-    private val iv: IvParameterSpec by lazy {
-        val byteArray = ByteArray(16)
-        SecureRandom().nextBytes(byteArray)
-        IvParameterSpec(byteArray)
-    }
+    private val ivParamsSpec: IvParameterSpec
+        get() {
+            val byteArray = ByteArray(ivBytesLength)
+            SecureRandom().nextBytes(byteArray)
+            return IvParameterSpec(byteArray)
+        }
 
     fun encrypt(
         text: String,
         inputEncoding: CodeEncoding = CodeEncoding.BASE_64,
         outputEncoding: CodeEncoding = CodeEncoding.BASE_64,
     ): String {
+        _logger.debug("ENCRYPTING TEXT ENCODING_IN:{} ENCODING_OUT:{}", inputEncoding, outputEncoding)
+
         val inputBytes = text.toInputBytes(inputEncoding)
+        val ivSpec = ivParamsSpec
 
         val cipher = Cipher.getInstance(transformation)
-        cipher.init(Cipher.ENCRYPT_MODE, key, iv)
+        cipher.init(Cipher.ENCRYPT_MODE, key, ivSpec)
         val result = cipher.doFinal(inputBytes)
-
-        return result.toOutputString(outputEncoding)
+        val combinedResult = ivSpec.iv + result
+        _logger.debug("FINAL RESULT :${combinedResult.size}")
+        return combinedResult.toOutputString(outputEncoding)
     }
 
     fun decrypt(
@@ -49,11 +58,18 @@ class AESEncryptionLayer(private val properties: OTPAuthProperties) {
         outputEncoding: CodeEncoding = CodeEncoding.BASE_64,
     ): String {
         val inputBytes = text.toInputBytes(inputEncoding)
+        require(
+            inputBytes.size > ivBytesLength,
+            lazyMessage = { "Invalid encrypted data: expected at least ${ivBytesLength + 1} bytes (IV + data), got ${inputBytes.size}" })
+
+        val ivBytes = inputBytes.copyOfRange(0, 16)
+        val input = inputBytes.copyOfRange(16, inputBytes.size)
 
         val cipher = Cipher.getInstance(transformation)
-        cipher.init(Cipher.DECRYPT_MODE, key, iv)
-        val result = cipher.doFinal(inputBytes)
+        cipher.init(Cipher.DECRYPT_MODE, key, IvParameterSpec(ivBytes))
+        val result = cipher.doFinal(input)
 
+        _logger.debug("ENCRYPTING TEXT ENCODING_IN:{} ENCODING_OUT:{}", inputEncoding, outputEncoding)
         return result.toOutputString(outputEncoding)
     }
 

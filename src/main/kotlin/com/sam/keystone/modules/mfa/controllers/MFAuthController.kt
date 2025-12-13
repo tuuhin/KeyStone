@@ -3,6 +3,8 @@ package com.sam.keystone.modules.mfa.controllers
 import com.sam.keystone.modules.mfa.dto.*
 import com.sam.keystone.modules.mfa.services.MFAEnableAndDisableService
 import com.sam.keystone.modules.mfa.services.MFASetupAndVerifyService
+import com.sam.keystone.modules.mfa.services.MFAVerifyLoginService
+import com.sam.keystone.modules.user.dto.response.TokenResponseDto
 import com.sam.keystone.modules.user.entity.User
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -20,10 +22,10 @@ import org.springframework.web.bind.annotation.RestController
     name = "Two Factor Authentication",
     description = "Enables the user to use multifactor authentication mechanisms"
 )
-@SecurityRequirement(name = "Authorization")
 class MFAuthController(
     private val setupAndVerifyService: MFASetupAndVerifyService,
     private val enableAndDisableService: MFAEnableAndDisableService,
+    private val verifyLoginService: MFAVerifyLoginService,
 ) {
 
     @PostMapping(
@@ -31,6 +33,7 @@ class MFAuthController(
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     @Operation(summary = "Setup multi-factor authentication for the user")
+    @SecurityRequirement(name = "Authorization")
     fun setup2fa(@AuthenticationPrincipal user: User): MFASetupResponseDto {
         return setupAndVerifyService.setup2fa(user)
     }
@@ -41,6 +44,7 @@ class MFAuthController(
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     @Operation(summary = "Verify multi-factor authentication authentication token")
+    @SecurityRequirement(name = "Authorization")
     fun verify2Fa(
         @RequestBody request: MFACodeRequestDto,
         @AuthenticationPrincipal user: User,
@@ -53,6 +57,7 @@ class MFAuthController(
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     @Operation(summary = "Enabled multi-factor authentication for the given user")
+    @SecurityRequirement(name = "Authorization")
     fun enable2FA(@AuthenticationPrincipal user: User): MFAEnableResponseDto {
         return enableAndDisableService.enable2FA(user)
     }
@@ -63,6 +68,7 @@ class MFAuthController(
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     @Operation(summary = "Disable multi-factor authentication for the given user")
+    @SecurityRequirement(name = "Authorization")
     fun disable2FA(
         @RequestBody request: MFADisableRequestDto,
         @AuthenticationPrincipal user: User,
@@ -72,8 +78,18 @@ class MFAuthController(
 
     @PostMapping("/backup-codes", produces = [MediaType.APPLICATION_JSON_VALUE])
     @Operation(summary = "Generate new back up codes")
+    @SecurityRequirement(name = "Authorization")
     fun regenerateBackupCodes(@AuthenticationPrincipal user: User): MFAEnableResponseDto {
         return enableAndDisableService.regenerateBackUpCodes(user)
+    }
+
+    @PostMapping(
+        "/verify-login",
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    @Operation(summary = "Fetch credentials if 2fa is enabled")
+    fun verifyLoginUser(@RequestBody request: VerifyLoginRequestDto): TokenResponseDto {
+        return verifyLoginService.verifyLogin(request)
     }
 
 }

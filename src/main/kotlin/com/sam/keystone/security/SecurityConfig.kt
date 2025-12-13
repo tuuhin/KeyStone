@@ -38,7 +38,8 @@ class SecurityConfig(
                         "/api/auth/resend_email",
                         "/api/auth/register",
                         "/api/auth/login",
-                        "/api/auth/verify"
+                        "/api/auth/verify",
+                        "/api/2fa/verify-login"
                     )
                     .permitAll()
                     .anyRequest()
