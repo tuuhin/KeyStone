@@ -1,21 +1,17 @@
 package com.sam.keystone.infrastructure.oidc
 
+import com.sam.keystone.infrastructure.jwt.JWTProperties
 import com.sam.keystone.modules.oauth2.models.OAuth2GrantTypes
 import com.sam.keystone.modules.oauth2.models.OAuth2ResponseType
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 @Component
-class OIDCConfiguration {
-
-    @Value($$"${spring.security.oauth2.client.provider.oidc-provider-issuer}")
-    lateinit var jwtIssuer: String
-
+class OIDCConfiguration(private val properties: JWTProperties) {
 
     fun readOIDCConfiguration(): OIDCConfigurationDto {
-        val baseEndpoint = jwtIssuer
+        val baseEndpoint = properties.issuer
         return OIDCConfigurationDto(
-            issuer = jwtIssuer,
+            issuer = properties.issuer,
             authorizationEndpoint = "${baseEndpoint}oauth2/authorize",
             tokenEndpoint = "${baseEndpoint}oauth2/token",
             userinfoEndpoint = "${baseEndpoint}openid/userinfo",
