@@ -25,8 +25,8 @@ class JWTTokenGeneratorService(
         val accessTokenLife = properties.accessTokenExpiryMinutes
         val refreshTokenLife = properties.refreshTokenExpiryDays
 
-        val accessTokenDuration = accessTokenExpiry ?: (accessTokenLife).toInt().minutes
-        val refreshTokenDuration = refreshTokenExpiry ?: (refreshTokenLife).toInt().days
+        val accessTokenDuration = accessTokenExpiry ?: (accessTokenLife).minutes
+        val refreshTokenDuration = refreshTokenExpiry ?: (refreshTokenLife).days
 
         val accessToken = generator.generateToken(
             timeToLive = accessTokenDuration,
@@ -40,8 +40,8 @@ class JWTTokenGeneratorService(
         return TokenResponseDto(
             accessToken = accessToken,
             refreshToken = refreshToken,
-            accessTokenExpireInMillis = accessTokenDuration.inWholeMilliseconds,
-            refreshTokenExpiresInMillis = refreshTokenDuration.inWholeMilliseconds
+            accessTokenExpireIn = accessTokenDuration,
+            refreshTokenExpireIn = refreshTokenDuration
         )
     }
 

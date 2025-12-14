@@ -6,6 +6,7 @@ import com.sam.keystone.security.exception.InvalidTokenVersionException
 import com.sam.keystone.security.exception.JWTCookieNotFoundException
 import com.sam.keystone.security.exception.JWTTokenExpiredException
 import com.sam.keystone.security.exception.RequestedUserNotFoundException
+import com.sam.keystone.security.utils.accessTokenCookie
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -62,9 +63,8 @@ class JWTCookieFilterConfig(
 
     private fun addAuthorizedUser(request: HttpServletRequest) {
 
-        // get the request cookies
-        val cookies = request.cookies?.filterNotNull()?.toSet() ?: emptySet()
-        val tokenCookie = cookies.find { it.name == "access_token" } ?: throw JWTCookieNotFoundException()
+        _logger.info("LOOKING FOR ACCESS TOKEN COOKIE")
+        val tokenCookie = request.accessTokenCookie ?: throw JWTCookieNotFoundException()
 
         // authenticate via the cookie
         val result = jwtTokenService.validateAndReturnAuthResult(tokenCookie.value) ?: throw JWTTokenExpiredException()

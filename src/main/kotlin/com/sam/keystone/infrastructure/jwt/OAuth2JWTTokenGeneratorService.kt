@@ -55,8 +55,8 @@ class OAuth2JWTTokenGeneratorService(
         return TokenResponseDto(
             accessToken = accessToken,
             refreshToken = refreshToken,
-            accessTokenExpireInMillis = accessTokenDuration.inWholeMilliseconds,
-            refreshTokenExpiresInMillis = refreshTokenDuration.inWholeMilliseconds
+            accessTokenExpireIn = accessTokenDuration,
+            refreshTokenExpireIn = refreshTokenDuration
         )
     }
 

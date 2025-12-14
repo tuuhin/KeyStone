@@ -1,5 +1,6 @@
 package com.sam.keystone.security.utils
 
+import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 
 val HttpServletRequest.bearerToken: String?
@@ -8,3 +9,6 @@ val HttpServletRequest.bearerToken: String?
         if (authHeader == null || !authHeader.startsWith("Bearer")) return null
         return authHeader.substring(7)
     }
+
+val HttpServletRequest.accessTokenCookie: Cookie?
+    get() = cookies?.filterNotNull()?.find { it.name == "access_token" }

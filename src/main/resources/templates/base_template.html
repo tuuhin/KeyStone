@@ -13,8 +13,17 @@
     <title>{%block title%}{% endblock %}</title>
 </head>
 <body>
-<div class="container py-2">
-    {% block body %}{% endblock %}
+<div class="container p-4">
+    {% if error_message is defined and error_message is not empty %}
+    {% set error_type_internal = error_type | default("info") %}
+    {% set error_type_class = "alert-" + error_type_internal %}
+    <div class="alert {{error_type_class}} alert-dismissible fade show" role="alert">
+        {{error_message}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    {% block body %}
+    {% endblock %}
 </div>
 </body>
 </html>
