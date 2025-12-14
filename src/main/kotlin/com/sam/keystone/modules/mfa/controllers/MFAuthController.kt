@@ -73,7 +73,10 @@ class MFAuthController(
         @RequestBody request: MFADisableRequestDto,
         @AuthenticationPrincipal user: User,
     ): MFADisableResponseDto {
-        return enableAndDisableService.disable2FA(request, user)
+        val result = enableAndDisableService.validateDisableRequest(request, user)
+        // update the token version
+        enableAndDisableService.updateTokenVersion(user)
+        return result
     }
 
     @PostMapping("/backup-codes", produces = [MediaType.APPLICATION_JSON_VALUE])

@@ -87,15 +87,13 @@ class MFAEnableAndDisableService(
     }
 
     @Transactional
-    fun disable2FA(request: MFADisableRequestDto, user: User): MFADisableResponseDto {
-
+    fun validateDisableRequest(request: MFADisableRequestDto, user: User): MFADisableResponseDto {
         // match the password
         val passwordSame = passwordEncoder.matches(request.password, user.pWordHash)
         if (!passwordSame) throw UserAuthException("Invalid password")
 
         // validate incoming code
-        val entity = repository.findTOTPEntityByUser(user)
-            ?: throw MFANotEnabledException()
+        val entity = repository.findTOTPEntityByUser(user) ?: throw MFANotEnabledException()
 
         val base32DecryptedSecret = encryptor.decrypt(
             text = entity.totpSecret,
@@ -117,18 +115,18 @@ class MFAEnableAndDisableService(
             }
             foundCode != null && !isUsedCode
         }
-
         if (!requestValidated) throw TOTPCodeInvalidException()
-
-        // delete the underlying totp entity this will automatically delete the associated back-up codes
+        // if this is valid delete the entity
         repository.delete(entity)
+        return MFADisableResponseDto(isDisabled = true)
+    }
 
-        // update the token entry invalidating the previous tokens
-        // this should be a global logout
-        user.tokenVersion++
-        userRepository.save(user)
 
-        // return the result
-        return MFADisableResponseDto(true)
+    @Transactional
+    fun updateTokenVersion(user: User) {
+        // cannot modify the user its read only from parameters so we read the user again
+        val currentUser = userRepository.findUserById(user.id) ?: throw UserAuthException("User not found")
+        currentUser.tokenVersion += 1
+        userRepository.save(currentUser)
     }
 }
