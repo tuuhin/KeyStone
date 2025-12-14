@@ -2,6 +2,7 @@ package com.sam.keystone.security.filters
 
 import com.sam.keystone.infrastructure.jwt.JWTTokenGeneratorService
 import com.sam.keystone.modules.user.repository.UserRepository
+import com.sam.keystone.security.exception.InvalidTokenVersionException
 import com.sam.keystone.security.exception.JWTCookieNotFoundException
 import com.sam.keystone.security.exception.JWTTokenExpiredException
 import com.sam.keystone.security.exception.RequestedUserNotFoundException
@@ -62,14 +63,17 @@ class JWTCookieFilterConfig(
     private fun addAuthorizedUser(request: HttpServletRequest) {
 
         // get the request cookies
-        val cookies = request.cookies?.toSet() ?: emptySet()
+        val cookies = request.cookies?.filterNotNull()?.toSet() ?: emptySet()
         val tokenCookie = cookies.find { it.name == "access_token" } ?: throw JWTCookieNotFoundException()
 
         // authenticate via the cookie
-        val (userId, _) = jwtTokenService.validateToken(tokenCookie.value) ?: throw JWTTokenExpiredException()
+        val result = jwtTokenService.validateAndReturnAuthResult(tokenCookie.value) ?: throw JWTTokenExpiredException()
+
+        val user = repository.findUserById(result.userId) ?: throw RequestedUserNotFoundException()
+        // token is invalid now
+        if (result.tokenVersion != user.tokenVersion) throw InvalidTokenVersionException()
 
         // get the user if not route to log in
-        val user = repository.findUserById(userId) ?: throw RequestedUserNotFoundException()
 
         val newAuth = UsernamePasswordAuthenticationToken.authenticated(
             user,
