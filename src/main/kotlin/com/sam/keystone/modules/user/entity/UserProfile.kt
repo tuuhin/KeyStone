@@ -18,9 +18,9 @@ class UserProfile(
     @Column(name = "bio", length = 512, nullable = true)
     var bio: String? = null,
 
-    @Column(name = "full_name", nullable = true)
-    var fullName: String? = null,
+    @Column(name = "display_name", nullable = true)
+    var displayName: String? = null,
 
-    @Column(name = "avatar_url", nullable = true)
-    var avatarUrl: String? = null,
+    @Column(name = "avatar_image_key", nullable = true)
+    var imageKey: String? = null,
 )

@@ -1,12 +1,16 @@
 package com.sam.keystone.infrastructure.jwt
 
+import com.sam.keystone.infrastructure.buckets.S3StorageBucket
 import com.sam.keystone.modules.user.entity.User
 import org.springframework.stereotype.Component
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
 @Component
-class OIDCJWTTokenGenerator(private val generator: JWTKeysGenerator) {
+class OIDCJWTTokenGenerator(
+    private val generator: JWTKeysGenerator,
+    private val s3StorageBucket: S3StorageBucket,
+) {
 
     fun generateOIDCToken(
         user: User,
@@ -29,8 +33,9 @@ class OIDCJWTTokenGenerator(private val generator: JWTKeysGenerator) {
                 put(JWTClaims.JWT_OPEN_ID_CLAIM_EMAIL_VERIFIED, (user.verifyState?.isVerified ?: false))
             }
             if (includeProfile) {
-                put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_AVATAR, user.profile?.avatarUrl)
-                put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_FULL_NAME, user.profile?.fullName)
+                val imageURL = user.profile?.imageKey?.let { s3StorageBucket.provideSignedURL(it, 1.hours) }
+                put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_AVATAR, imageURL)
+                put(JWTClaims.JWT_OPEN_ID_CLAIM_USER_FULL_NAME, user.profile?.displayName)
             }
         }
 

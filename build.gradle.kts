@@ -41,7 +41,8 @@ dependencies {
     // qr code
     implementation("com.google.zxing:core:3.5.4")
     implementation("commons-codec:commons-codec:1.17.0")
-
+    // aws s3 starter
+    implementation("io.awspring.cloud:spring-cloud-aws-starter-s3:3.4.2")
     // swagger docs
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
     // jwts
