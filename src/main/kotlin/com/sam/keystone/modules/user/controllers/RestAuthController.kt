@@ -13,7 +13,7 @@ import com.sam.keystone.modules.user.entity.User
 import com.sam.keystone.modules.user.service.AuthRegisterLoginService
 import com.sam.keystone.modules.user.service.AuthTokenManagementService
 import com.sam.keystone.modules.user.service.AuthVerificationService
-import com.sam.keystone.modules.user.utils.mappers.toReposeDTO
+import com.sam.keystone.modules.user.service.UserProfileService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -36,6 +36,7 @@ class RestAuthController(
     private val registerLoginService: AuthRegisterLoginService,
     private val tokenManagementService: AuthTokenManagementService,
     private val authVerifyService: AuthVerificationService,
+    private val profileService: UserProfileService,
 ) {
 
     @PostMapping("/register")
@@ -66,6 +67,7 @@ class RestAuthController(
             ),
         ]
     )
+    @ResponseStatus(HttpStatus.ACCEPTED)
     fun loginUser(@RequestBody request: LoginUserRequest): LoginResponseDto {
         return registerLoginService.loginUser(request)
     }
@@ -96,7 +98,7 @@ class RestAuthController(
     @Operation(summary = "Fetches the current authenticated user")
     @SecurityRequirement(name = "Authorization")
     fun getCurrentUser(@AuthenticationPrincipal user: User): UserResponseDto {
-        return user.toReposeDTO()
+        return profileService.currentUserProfile(user)
     }
 
 
