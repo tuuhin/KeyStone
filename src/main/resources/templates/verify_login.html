@@ -1,0 +1,21 @@
+{%extends 'base_template'%}
+{% block title%} Multi Factor Authentication {%endblock%}
+{%block body%}
+<h2 class="text-center mb-2">Enter TOTP Token</h2>
+<form action="/verify-login" method="POST">
+    <div class="mb-3">
+        <input type="hidden" name="{{ _csrf.parameterName }}" value="{{ _csrf.token }}">
+        <input type="hidden" name="mfa_token" value="{{ mfa_token }}">
+        <label for="totpToken" class="form-label visually-hidden">Time-based One-Time Password (6 Digits)</label>
+        <input type="text" class="form-control form-control-lg text-center" id="totpToken" name="totpToken"
+               placeholder="e.g. 123456" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+        <div id="totpHelp" class="form-text text-center">Your 6-digit code from your authenticator app.</div>
+    </div>
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-md">
+            Verify Token
+        </button>
+    </div>
+</form>
+
+{% endblock %}

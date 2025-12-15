@@ -2,7 +2,6 @@ package com.sam.keystone.infrastructure.jwt
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.ResourceLoader
 import org.springframework.stereotype.Component
 import java.security.KeyFactory
@@ -21,24 +20,12 @@ import kotlin.time.toJavaInstant
 @Component
 class JWTKeysGenerator(
     private val resourceLoader: ResourceLoader,
+    private val properties: JWTProperties,
 ) {
 
-    @Value($$"${jwt.audience}")
-    lateinit var jwtAudience: String
-
-    @Value($$"${jwt.issuer}")
-    lateinit var jwtIssuer: String
-
-    @Value($$"${jwt.private-key-path}")
-    lateinit var privateKeyPath: String
-
-    @Value($$"${jwt.public-key-path}")
-    lateinit var publicKeyPath: String
-
-
     private val _algorithm: Algorithm by lazy {
-        val publicKey = loadPublicKey(publicKeyPath)
-        val privateKey = loadPrivateKey(privateKeyPath)
+        val publicKey = loadPublicKey(properties.publicKeyPath)
+        val privateKey = loadPrivateKey(properties.privateKeyPath)
         Algorithm.RSA256(publicKey, privateKey)
     }
 
@@ -61,8 +48,8 @@ class JWTKeysGenerator(
         val expiry = now.plus(timeToLive)
 
         val tokenGenerated = JWT.create()
-            .withAudience(jwtAudience)
-            .withIssuer(jwtIssuer)
+            .withAudience(properties.audience)
+            .withIssuer(properties.issuer)
             .withIssuedAt(Instant.now())
             .withExpiresAt(expiry.toJavaInstant())
 

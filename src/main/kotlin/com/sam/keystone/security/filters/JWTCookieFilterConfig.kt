@@ -2,9 +2,11 @@ package com.sam.keystone.security.filters
 
 import com.sam.keystone.infrastructure.jwt.JWTTokenGeneratorService
 import com.sam.keystone.modules.user.repository.UserRepository
+import com.sam.keystone.security.exception.InvalidTokenVersionException
 import com.sam.keystone.security.exception.JWTCookieNotFoundException
 import com.sam.keystone.security.exception.JWTTokenExpiredException
 import com.sam.keystone.security.exception.RequestedUserNotFoundException
+import com.sam.keystone.security.utils.accessTokenCookie
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -25,7 +27,8 @@ class JWTCookieFilterConfig(
     private val _logger by lazy { LoggerFactory.getLogger(this::class.java) }
 
     override fun shouldNotFilter(request: HttpServletRequest): Boolean {
-        val shouldFilter = arrayOf("/oauth2/authorize", "/home", "/login")
+        // put the authorize route list in here
+        val shouldFilter = arrayOf("/oauth2/authorize", "/home")
         val condition = shouldFilter.any { request.requestURI.startsWith(it) }
         return !condition
     }
@@ -60,15 +63,17 @@ class JWTCookieFilterConfig(
 
     private fun addAuthorizedUser(request: HttpServletRequest) {
 
-        // get the request cookies
-        val cookies = request.cookies?.toSet() ?: emptySet()
-        val tokenCookie = cookies.find { it.name == "access_token" } ?: throw JWTCookieNotFoundException()
+        _logger.info("LOOKING FOR ACCESS TOKEN COOKIE")
+        val tokenCookie = request.accessTokenCookie ?: throw JWTCookieNotFoundException()
 
         // authenticate via the cookie
-        val (userId, _) = jwtTokenService.validateToken(tokenCookie.value) ?: throw JWTTokenExpiredException()
+        val result = jwtTokenService.validateAndReturnAuthResult(tokenCookie.value) ?: throw JWTTokenExpiredException()
+
+        val user = repository.findUserById(result.userId) ?: throw RequestedUserNotFoundException()
+        // token is invalid now
+        if (result.tokenVersion != user.tokenVersion) throw InvalidTokenVersionException()
 
         // get the user if not route to log in
-        val user = repository.findUserById(userId) ?: throw RequestedUserNotFoundException()
 
         val newAuth = UsernamePasswordAuthenticationToken.authenticated(
             user,

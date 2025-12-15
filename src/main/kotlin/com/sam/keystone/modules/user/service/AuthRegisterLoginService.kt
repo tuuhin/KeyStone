@@ -3,11 +3,13 @@ package com.sam.keystone.modules.user.service
 import com.sam.keystone.config.RandomTokenGeneratorConfig
 import com.sam.keystone.infrastructure.email.EmailSenderService
 import com.sam.keystone.infrastructure.jwt.JWTTokenGeneratorService
+import com.sam.keystone.infrastructure.redis.MFASecretStore
 import com.sam.keystone.infrastructure.redis.UserVerificationTokenManager
 import com.sam.keystone.modules.user.dto.request.LoginUserRequest
 import com.sam.keystone.modules.user.dto.request.RegisterUserRequest
+import com.sam.keystone.modules.user.dto.response.LoginResponseDto
+import com.sam.keystone.modules.user.dto.response.MFALoginResponseDto
 import com.sam.keystone.modules.user.dto.response.RegisterUserResponseDto
-import com.sam.keystone.modules.user.dto.response.TokenResponseDto
 import com.sam.keystone.modules.user.entity.User
 import com.sam.keystone.modules.user.entity.UserProfile
 import com.sam.keystone.modules.user.entity.UserVerifyInfo
@@ -21,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.net.URLEncoder
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 @Service
 class AuthRegisterLoginService(
@@ -30,6 +33,7 @@ class AuthRegisterLoginService(
     private val usersTokenManager: UserVerificationTokenManager,
     private val emailSender: EmailSenderService,
     private val tokenGenerator: RandomTokenGeneratorConfig,
+    private val secretStore: MFASecretStore,
 ) {
 
     @Transactional
@@ -67,29 +71,39 @@ class AuthRegisterLoginService(
         request: LoginUserRequest,
         createRefreshToken: Boolean = true,
         accessTokenTTL: Duration? = null,
-    ): TokenResponseDto {
-
+    ): LoginResponseDto {
         val user = userRepository.findUserByUserName(request.userName)
-        val foundUser = user ?: throw UserAuthException("Cannot find the given user")
+            ?: throw UserAuthException("Cannot find the given user")
 
-        val passwordSame = passwordEncoder.matches(request.password, foundUser.pWordHash)
+        val passwordSame = passwordEncoder.matches(request.password, user.pWordHash)
         if (!passwordSame) throw UserAuthException("Invalid password")
 
         // user is not verified
         if (user.verifyState?.isVerified == false)
             throw UserVerificationException("User not verified")
 
-        // so the user exists
-        return jwtTokenManager.generateTokenPairs(
-            user = foundUser,
-            accessTokenExpiry = accessTokenTTL,
-            createRefreshToken = createRefreshToken
-        )
+        // in case totp is not added or enabled
+        if (user.totpState == null || user.totpState?.isEnabled == false) {
+            val tokens = jwtTokenManager.generateTokenPairs(
+                user = user,
+                accessTokenExpiry = accessTokenTTL,
+                createRefreshToken = createRefreshToken
+            )
+            return LoginResponseDto.LoginResponseWithTokens(tokens)
+        }
+        // totp is added and is enabled
+        val tokenValidity = 1.minutes
+        val secret = tokenGenerator.generateRandomToken(byteLength = 12)
+        val hashedSecret = tokenGenerator.hashToken(secret)
+        secretStore.saveTempMFALoginToken(hashedSecret, user.id, tokenValidity)
+
+        val mfaResponse = MFALoginResponseDto(isEnabled = true, token = secret, tokenValidity = tokenValidity)
+        return LoginResponseDto.LoginResponseWith2Fa(mfaResponse)
     }
 
     @Transactional
-    fun deleteUser(userId: Long) {
-        val user = userRepository.findUserById(userId) ?: throw UserAuthException("User cannot be deleted")
+    fun deleteUser(user: User) {
+        val user = userRepository.findUserById(user.id) ?: throw UserAuthException("User cannot be deleted")
         userRepository.delete(user)
     }
 

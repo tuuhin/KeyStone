@@ -1,4 +1,4 @@
-package com.sam.keystone.modules.oauth2.oidc
+package com.sam.keystone.modules.oauth2.controllers
 
 import com.sam.keystone.infrastructure.oidc.OIDCConfiguration
 import com.sam.keystone.infrastructure.oidc.OIDCConfigurationDto

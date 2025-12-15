@@ -18,29 +18,36 @@ class AuthTokenManagementService(
 ) {
 
     fun handleRefreshTokenRequest(request: RefreshTokenRequest, currentUser: User): TokenResponseDto {
-        val (userId, expireAfter) = jwtTokenManager.validateToken(request.token, type = JWTTokenType.REFRESH_TOKEN)
+        val result = jwtTokenManager.validateAndReturnAuthResult(request.token)
             ?: throw UserAuthException("Refresh Token expired or invalid")
 
-        if (userId != currentUser.id) throw UserAuthException("Invalid account access request")
+        // check validation
+        if (result.userId != currentUser.id) throw UserAuthException("Invalid account access request")
+        val user = userRepository.findUserById(result.userId)
+            ?: throw UserAuthException("Invalid account access request")
 
         if (blackListManager.isBlackListed(request.token))
             throw UserAuthException("Refresh token blacklisted")
 
         // add the item to the blacklist so it cannot be used anymore
-        blackListManager.addToBlackList(request.token, type = JWTTokenType.REFRESH_TOKEN, expireAfter)
-
+        blackListManager.addToBlackList(request.token, type = JWTTokenType.REFRESH_TOKEN, result.expiresAfter)
         // create a new token pair
-        val user = userRepository.findUserById(userId) ?: throw UserAuthException("Cannot find user")
         return jwtTokenManager.generateTokenPairs(user)
     }
 
 
     fun blackListToken(request: RefreshTokenRequest, user: User) {
-        val (userId, expireAfter) = jwtTokenManager.validateToken(request.token, type = JWTTokenType.REFRESH_TOKEN)
+        val result = jwtTokenManager.validateAndReturnAuthResult(request.token)
             ?: throw UserAuthException("Refresh Token expired or invalid")
+
+        if (result.tokenType != JWTTokenType.REFRESH_TOKEN)
+            throw UserAuthException("Invalid token type provided")
+
+        if (result.userId != user.id)
+            throw UserAuthException("Invalid authenticated user")
 
         // add the item to the blacklist so it cannot be used anymore
         if (blackListManager.isBlackListed(request.token)) return
-        blackListManager.addToBlackList(request.token, type = JWTTokenType.REFRESH_TOKEN, expireAfter)
+        blackListManager.addToBlackList(request.token, type = JWTTokenType.REFRESH_TOKEN, expiry = result.expiresAfter)
     }
 }

@@ -2,6 +2,7 @@ package com.sam.keystone.modules.user.dto.response
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
+import kotlin.time.Duration
 
 data class TokenResponseDto(
     @field:JsonProperty("access_token")
@@ -11,8 +12,17 @@ data class TokenResponseDto(
     val refreshToken: String? = null,
 
     @field:JsonIgnore
-    val accessTokenExpireInMillis: Long,
+    val accessTokenExpireIn: Duration = Duration.ZERO,
 
     @field:JsonIgnore
-    val refreshTokenExpiresInMillis: Long,
-)
+    val refreshTokenExpireIn: Duration = Duration.ZERO,
+) {
+
+    @get:JsonIgnore
+    val accessTokenExpireInMillis: Long
+        get() = accessTokenExpireIn.inWholeMilliseconds
+
+    @get:JsonIgnore
+    val refreshTokenExpiresInMillis: Long
+        get() = refreshTokenExpireIn.inWholeMilliseconds
+}

@@ -1,5 +1,6 @@
 package com.sam.keystone.modules.user.entity
 
+import com.sam.keystone.modules.mfa.entity.TOTPEntity
 import com.sam.keystone.modules.user.models.UserRole
 import jakarta.persistence.*
 import org.springframework.security.core.GrantedAuthority
@@ -32,6 +33,9 @@ class User(
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Instant = Instant.now(),
+
     @Column(name = "role", nullable = false)
     @Enumerated(value = EnumType.STRING)
     val role: UserRole = UserRole.USER,
@@ -41,7 +45,24 @@ class User(
 
     @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], optional = false)
     var verifyState: UserVerifyInfo? = null,
-) : UserDetails {
+
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], optional = true, fetch = FetchType.LAZY)
+    var totpState: TOTPEntity? = null,
+
+    @Column(name = "token_version", nullable = false, columnDefinition = "INTEGER")
+    var tokenVersion: Int = 0,
+
+    ) : UserDetails {
+
+    @PrePersist
+    fun onCreate() {
+        createdAt = Instant.now()
+    }
+
+    @PreUpdate
+    fun onUpdate() {
+        updatedAt = Instant.now()
+    }
 
     override fun getAuthorities(): Collection<GrantedAuthority?> = listOf(SimpleGrantedAuthority(role.name))
 

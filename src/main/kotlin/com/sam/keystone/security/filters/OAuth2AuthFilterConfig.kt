@@ -6,6 +6,7 @@ import com.sam.keystone.infrastructure.jwt.JWTClaims
 import com.sam.keystone.infrastructure.jwt.JWTKeysGenerator
 import com.sam.keystone.modules.core.dto.ErrorResponseDto
 import com.sam.keystone.modules.oauth2.repository.OAuth2ClientRepository
+import com.sam.keystone.modules.user.models.JWTTokenType
 import com.sam.keystone.security.exception.InvalidAuthClientException
 import com.sam.keystone.security.exception.JWTTokenExpiredException
 import com.sam.keystone.security.models.OAuth2ClientUser
@@ -76,7 +77,7 @@ class OAuth2AuthFilterConfig(
         val clientId = result.claims.getOrDefault(JWTClaims.JWT_CLAIM_CLIENT_ID, null)?.asString()
 
         // if client id is provided then it's a correct
-        if (clientId == null || tokenTypeString != "ACCESS_TOKEN") return
+        if (clientId == null || tokenTypeString != JWTTokenType.ACCESS_TOKEN.name) return
         val clientScopes = scopes?.split(" ")?.toSet() ?: emptySet()
 
         // check if this is a valid client

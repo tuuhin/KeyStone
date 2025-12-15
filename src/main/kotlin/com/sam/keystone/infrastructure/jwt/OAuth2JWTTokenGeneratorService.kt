@@ -4,20 +4,16 @@ import com.sam.keystone.modules.oauth2.models.OAuth2GrantTypes
 import com.sam.keystone.modules.user.dto.response.TokenResponseDto
 import com.sam.keystone.modules.user.entity.User
 import com.sam.keystone.modules.user.models.JWTTokenType
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 @Component
-class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
-
-    @Value($$"${jwt.oauth2.access-token-expiry-minutes}")
-    lateinit var accessTokenLife: String
-
-    @Value($$"${jwt.oauth2.refresh-token-expiry-days}")
-    lateinit var refreshTokenLife: String
+class OAuth2JWTTokenGeneratorService(
+    private val generator: JWTKeysGenerator,
+    private val properties: JWTOAuth2Properties,
+) {
 
     fun generateOAuthTokenPair(
         clientId: String,
@@ -29,8 +25,11 @@ class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
         responseType: OAuth2GrantTypes = OAuth2GrantTypes.AUTHORIZATION_CODE,
     ): TokenResponseDto {
 
-        val accessTokenDuration = accessTokenExpiry ?: (accessTokenLife).toInt().minutes
-        val refreshTokenDuration = refreshTokenExpiry ?: (refreshTokenLife).toInt().days
+        val accessTokenLife = properties.accessTokenExpiryMinutes.minutes
+        val refreshTokenLife = properties.refreshTokenExpiryDays.days
+
+        val accessTokenDuration = accessTokenExpiry ?: accessTokenLife
+        val refreshTokenDuration = refreshTokenExpiry ?: refreshTokenLife
 
 
         val baseMap: Map<String, Any?> = buildMap {
@@ -56,8 +55,8 @@ class OAuth2JWTTokenGeneratorService(private val generator: JWTKeysGenerator) {
         return TokenResponseDto(
             accessToken = accessToken,
             refreshToken = refreshToken,
-            accessTokenExpireInMillis = accessTokenDuration.inWholeMilliseconds,
-            refreshTokenExpiresInMillis = refreshTokenDuration.inWholeMilliseconds
+            accessTokenExpireIn = accessTokenDuration,
+            refreshTokenExpireIn = refreshTokenDuration
         )
     }
 

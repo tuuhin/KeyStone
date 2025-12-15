@@ -10,6 +10,7 @@ object JWTClaims {
     const val JWT_CLAIM_USER_ID = "user_id"
     const val JWT_CLAIM_TOKEN_TYPE = "token_type"
     const val JWT_CLAIM_USER_NAME = "user_name"
+    const val JWT_CLAIM_TOKEN_VERSION = "version"
 
     const val JWT_CLAIM_NONCE = "nonce"
     const val JWT_TOKEN_AT_HASH = "at_hash"
