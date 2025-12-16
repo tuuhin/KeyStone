@@ -3,6 +3,9 @@ package com.sam.keystone.modules.user.service
 import com.sam.keystone.config.RandomTokenGeneratorConfig
 import com.sam.keystone.config.models.CodeEncoding
 import com.sam.keystone.infrastructure.buckets.S3StorageBucket
+import com.sam.keystone.modules.core.exceptions.FileEmptyException
+import com.sam.keystone.modules.core.exceptions.FileTooLargeException
+import com.sam.keystone.modules.core.exceptions.InvalidFileFormatException
 import com.sam.keystone.modules.user.dto.request.ProfileUpdateRequest
 import com.sam.keystone.modules.user.dto.response.UserResponseDto
 import com.sam.keystone.modules.user.entity.User
@@ -34,6 +37,15 @@ class UserProfileService(
     @Transactional
     fun uploadProfileImage(file: MultipartFile, user: User) {
 
+        val imageTypes = arrayOf("image/jpeg", "image/png", "image/gif")
+        // file is empty
+        if (file.isEmpty) throw FileEmptyException()
+        // file too large 1mb threshold
+        if (file.size > 1024 * 1024) throw FileTooLargeException(file.size)
+        //file is not image format
+        if (file.contentType !in imageTypes)
+            throw InvalidFileFormatException("image/*", file.contentType ?: "")
+
         val profile = repository.findUserProfileByUser(user) ?: throw UserAuthException("User not found")
 
         val hash = tokenGenerator.hashToken("${user.id}", CodeEncoding.HEX_LOWERCASE)
@@ -57,9 +69,11 @@ class UserProfileService(
     @Transactional
     fun deleteProfileImage(user: User) {
         val profile = repository.findUserProfileByUser(user) ?: throw UserAuthException("User not found")
-
-        val imageKey = profile.imageKey ?: throw Exception("No profile URL was set")
+        // if we have a image key set then only delete it otherwise keep it
+        val imageKey = profile.imageKey ?: return
+        // this will take some time
         bucket.deleteFile(imageKey)
+        // update the repository
         profile.imageKey = null
         repository.save(profile)
     }
