@@ -70,18 +70,6 @@ class RestAuthController(
     }
 
 
-    @GetMapping("/verify")
-    @Operation(summary = "Verifies a the register user")
-    fun verifyUser(@RequestParam token: String): ResponseEntity<MessageResponseDto> {
-        authVerifyService.verifyRegisterToken(token)
-
-        val response = MessageResponseDto("User is verified can continue to login")
-
-        return ResponseEntity.status(HttpStatus.OK)
-            .body(response)
-    }
-
-
     @PostMapping("/resend_email")
     @Operation(summary = "Resends the email for user verification")
     fun resendVerificationMail(@RequestBody request: ResendEmailRequest): ResponseEntity<Any> {
