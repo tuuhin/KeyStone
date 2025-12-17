@@ -5,10 +5,7 @@ import com.sam.keystone.modules.user.dto.request.LoginUserRequest
 import com.sam.keystone.modules.user.dto.request.RefreshTokenRequest
 import com.sam.keystone.modules.user.dto.request.RegisterUserRequest
 import com.sam.keystone.modules.user.dto.request.ResendEmailRequest
-import com.sam.keystone.modules.user.dto.response.LoginResponseDto
-import com.sam.keystone.modules.user.dto.response.RegisterUserResponseDto
-import com.sam.keystone.modules.user.dto.response.TokenResponseDto
-import com.sam.keystone.modules.user.dto.response.UserResponseDto
+import com.sam.keystone.modules.user.dto.response.*
 import com.sam.keystone.modules.user.entity.User
 import com.sam.keystone.modules.user.service.AuthRegisterLoginService
 import com.sam.keystone.modules.user.service.AuthTokenManagementService
@@ -101,6 +98,12 @@ class RestAuthController(
         return profileService.currentUserProfile(user)
     }
 
+    @GetMapping("account-verify")
+    @Operation(summary = "Informs the user if the current user is verified")
+    fun currentUserStaus(@AuthenticationPrincipal user: User): UserVerificationStatusDto {
+        val isVerified = user.verifyState?.isVerified ?: false
+        return UserVerificationStatusDto(isVerified)
+    }
 
     @PostMapping("/refresh")
     @ResponseStatus(HttpStatus.OK)

@@ -53,7 +53,7 @@ class UserProfileService(
         val key = "$hash/$randomId-${file.name}"
 
         val tempDir = System.getProperty("java.io.tmpdir")
-        val tmpFile = File.createTempFile(tempDir, "temp_file")
+        val tmpFile = File.createTempFile(tempDir, file.name)
         try {
             // upload the file
             file.transferTo(tmpFile)
