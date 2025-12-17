@@ -22,7 +22,7 @@ class User(
     var id: Long = 0L,
 
     @Column(name = "email", nullable = false)
-    val email: String = "",
+    var email: String = "",
 
     @Column(name = "p_word", nullable = false)
     var pWordHash: String = "",
