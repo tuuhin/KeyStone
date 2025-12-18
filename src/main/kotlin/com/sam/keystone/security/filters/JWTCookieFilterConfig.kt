@@ -72,6 +72,11 @@ class JWTCookieFilterConfig(
         val user = repository.findUserById(result.userId) ?: throw RequestedUserNotFoundException()
         // token is invalid now
         if (result.tokenVersion != user.tokenVersion) throw InvalidTokenVersionException()
+        // token is invalid as issues jwt is before password change
+        user.pWordUpdateAt?.let { updateInstant ->
+            if (result.issuedAt.isBefore(updateInstant))
+                throw InvalidTokenVersionException()
+        }
 
         // get the user if not route to log in
 
