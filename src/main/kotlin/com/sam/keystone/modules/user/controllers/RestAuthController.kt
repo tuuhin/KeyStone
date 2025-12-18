@@ -1,16 +1,10 @@
 package com.sam.keystone.modules.user.controllers
 
 import com.sam.keystone.modules.core.dto.MessageResponseDto
-import com.sam.keystone.modules.user.dto.request.LoginUserRequest
-import com.sam.keystone.modules.user.dto.request.RefreshTokenRequest
-import com.sam.keystone.modules.user.dto.request.RegisterUserRequest
-import com.sam.keystone.modules.user.dto.request.ResendEmailRequest
+import com.sam.keystone.modules.user.dto.request.*
 import com.sam.keystone.modules.user.dto.response.*
 import com.sam.keystone.modules.user.entity.User
-import com.sam.keystone.modules.user.service.AuthRegisterLoginService
-import com.sam.keystone.modules.user.service.AuthTokenManagementService
-import com.sam.keystone.modules.user.service.AuthVerificationService
-import com.sam.keystone.modules.user.service.UserProfileService
+import com.sam.keystone.modules.user.service.*
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -19,7 +13,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 
@@ -34,6 +27,7 @@ class RestAuthController(
     private val tokenManagementService: AuthTokenManagementService,
     private val authVerifyService: AuthVerificationService,
     private val profileService: UserProfileService,
+    private val passwordService: UserPasswordManagementService,
 ) {
 
     @PostMapping("/register")
@@ -71,10 +65,10 @@ class RestAuthController(
 
 
     @PostMapping("/resend_email")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Resends the email for user verification")
-    fun resendVerificationMail(@RequestBody request: ResendEmailRequest): ResponseEntity<Any> {
+    fun resendVerificationMail(@RequestBody request: ResendEmailRequest) {
         authVerifyService.resendEmail(request)
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }
 
 
@@ -121,4 +115,36 @@ class RestAuthController(
         registerLoginService.deleteUser(user = user)
         return MessageResponseDto(message = "User removed successfully")
     }
+
+
+    @PostMapping("/password/change")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Update current user password")
+    @SecurityRequirement(name = "Authorization")
+    fun changeUserPassword(
+        @RequestBody request: ChangePasswordRequest,
+        @AuthenticationPrincipal user: User,
+    ): MessageResponseDto {
+        passwordService.changeCurrentUserPassword(request, user)
+        return MessageResponseDto("User password updated successfully")
+    }
+
+    @PostMapping("/password/reset/request")
+    @Operation(summary = "Send a password reset request")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun resetUserPassword(@RequestBody request: ResetPasswordRequest) {
+        passwordService.sendPasswordResetRequest(request)
+    }
+
+    @PostMapping("/password/reset/confirm")
+    @Operation(summary = "Confirm password change")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    fun confirmPasswordRest(
+        @RequestParam("token") token: String,
+        @RequestBody request: ConfirmNewPasswordRequest,
+    ): MessageResponseDto {
+        passwordService.confirmPasswordChange(token, request.password)
+        return MessageResponseDto("User password updated")
+    }
+
 }

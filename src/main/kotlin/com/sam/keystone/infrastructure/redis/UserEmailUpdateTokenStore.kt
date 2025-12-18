@@ -36,8 +36,6 @@ class UserEmailUpdateTokenStore(
     fun getEmailUpdateData(tokenHash: String, deleteWhenDone: Boolean = true): EmailUpdateData? {
         _logger.debug("GET EMAIL UPDATE DATA FROM :$tokenHash")
         val tokenMeta = emailDataTemplate.opsForValue().get("$EMAIL_UPDATE_META:$tokenHash")
-        println("HEY THERE!!! :$tokenHash ${emailDataTemplate.opsForValue().get("$EMAIL_UPDATE_META:$tokenHash")}")
-
         _logger.debug("FOUND DATA FOR :$tokenHash")
 
         if (tokenMeta != null && deleteWhenDone) {
@@ -70,7 +68,6 @@ class UserEmailUpdateTokenStore(
     companion object {
         private const val EMAIL_UPDATE_TOKEN_KV = "user:email-update:id_to_token"
         private const val EMAIL_UPDATE_META = "user:email-update:token_to_meta"
-
         private const val EMAIL_UPDATE_RESEND_COUNT = "user:email-update:resend-count"
     }
 }

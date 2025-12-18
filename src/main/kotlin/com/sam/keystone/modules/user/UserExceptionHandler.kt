@@ -4,11 +4,13 @@ import com.sam.keystone.modules.core.dto.ErrorResponseDto
 import com.sam.keystone.modules.user.exceptions.UserAuthException
 import com.sam.keystone.modules.user.exceptions.UserValidationException
 import com.sam.keystone.modules.user.exceptions.UserVerificationException
+import com.sam.keystone.modules.user.exceptions.WeakPasswordException
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.ResponseStatus
 
 @ControllerAdvice
 class UserExceptionHandler {
@@ -33,6 +35,15 @@ class UserExceptionHandler {
             path = request.requestURI
         )
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response)
+    }
+
+    @ExceptionHandler(WeakPasswordException::class)
+    @ResponseStatus(HttpStatus.NOT_ACCEPTABLE)
+    fun handlerException(ex: WeakPasswordException): ErrorResponseDto {
+        return ErrorResponseDto(
+            message = ex.message,
+            error = "Password validation failed"
+        )
     }
 
 

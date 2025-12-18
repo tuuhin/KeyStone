@@ -19,6 +19,7 @@ import com.sam.keystone.modules.user.exceptions.UserAuthException
 import com.sam.keystone.modules.user.exceptions.UserValidationException
 import com.sam.keystone.modules.user.exceptions.UserVerificationException
 import com.sam.keystone.modules.user.repository.UserRepository
+import com.sam.keystone.modules.user.utils.validator.PasswordValidator
 import jakarta.transaction.Transactional
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -37,13 +38,15 @@ class AuthRegisterLoginService(
     private val tokenGenerator: RandomTokenGeneratorConfig,
     private val secretStore: MFASecretStore,
     private val bucket: S3StorageBucket,
+    private val pWordValidator: PasswordValidator,
 ) {
 
     @Transactional
-    fun createNewUser(request: RegisterUserRequest): RegisterUserResponseDto {
+    fun createNewUser(request: RegisterUserRequest, validateStrength: Boolean = false): RegisterUserResponseDto {
         val probableUser = userRepository.findUserByUserName(request.userName)
 
         if (probableUser != null) throw UserValidationException("User name is already taken")
+        if (validateStrength) pWordValidator.validate(request.password)
 
         val hash = passwordEncoder.encode(request.password)
 
