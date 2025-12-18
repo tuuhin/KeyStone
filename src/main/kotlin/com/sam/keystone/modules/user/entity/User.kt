@@ -22,13 +22,16 @@ class User(
     var id: Long = 0L,
 
     @Column(name = "email", nullable = false)
-    val email: String = "",
+    var email: String = "",
 
     @Column(name = "p_word", nullable = false)
     var pWordHash: String = "",
 
     @Column(name = "user_name", nullable = false, unique = true)
     var userName: String = "",
+
+    @Column(name = "p_word_change_timestamp", nullable = true)
+    var pWordUpdateAt: Instant? = null,
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

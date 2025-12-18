@@ -55,7 +55,13 @@ class JWTTokenGeneratorService(
             val tokenVersion = result.claims.getOrDefault(JWTClaims.JWT_CLAIM_TOKEN_VERSION, null)?.asInt() ?: -1
 
             val jwtTokenTYpe = JWTTokenType.entries.find { it.name == tokenTypString }
-            JWTAuthResult(userId = userId, tokenType = jwtTokenTYpe, tokenVersion, result.tokenTTL)
+            JWTAuthResult(
+                userId = userId,
+                tokenType = jwtTokenTYpe,
+                tokenVersion,
+                result.tokenCreateInstant,
+                result.tokenTTL
+            )
         } catch (_: JWTVerificationException) {
             null
         }

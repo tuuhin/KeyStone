@@ -8,6 +8,7 @@ authentication.
 ## Key Features
 
 - Standard Login: Traditional username and password authentication with `jwts`.
+- User profile management: User can also manage there profile like changing `password`, `avatar`.
 - OAuth 2.0 client provider: Provides additional oauth2 clients interface allowing user to create oauth2 clients
 - Two-Factor Authentication (2FA): Enhanced security using time-based one-time passwords (TOTP).
 
@@ -28,22 +29,31 @@ To get started or to preview the app follow the given instructions
     https://github.com/tuuhin/KeyStone
     cd KeyStone
   ```
-- Set up the properties : So this project uses `sendgrid` and `redis` as external providers, and we need few keys for
-  encryption (can be generated via `openssl` command ). We need to set up a build configuration for `bootRun` with the
-  following env
-  variables.
-  ```properties
-  # key paths
-  JWT_PUBLIC_KEY_PATH=
-  JWT_PRIVATE_KEY_PATH=
-  # send grid email provider
-  SENDGRID_API_KEY=
-  SENDGRID_SENDER_EMAIL=
-  #redis connection url
-  REDIS_CONNECTION_URL=
-  # aes encryption secret
-  AES_SECRET=
-  ```
+- Set up the properties : So this project uses various external providers
+  - `sendgrid` for sending email
+  - `redis` to hold temporary keys
+  - `s3-buckets` to hold media data mainly `avatar` for users
+
+  we need few keys for encryption (can be generated via `openssl` command ).
+  We need to set up a build configuration for `bootRun` with the following env variables.
+    ```properties
+    # key paths
+    JWT_PUBLIC_KEY_PATH=
+    JWT_PRIVATE_KEY_PATH=
+    # send grid email provider
+    SENDGRID_API_KEY=
+    SENDGRID_SENDER_EMAIL=
+    #redis connection url
+    REDIS_CONNECTION_URL=
+    # aes encryption secret
+    AES_SECRET=
+    #AWS
+    AWS_ACCESS_KEY=
+    AWS_ACCESS_SECRET=
+    AWS_REGION=
+    AWS_S3_BUCKET_NAME=
+
+    ```
 - If everything is set run `bootRun`, the server will start with the port configured in `application.properties`
 
 ## 🧪 API Documents
@@ -55,5 +65,7 @@ All exposed RESTful API routes are documented using Swagger/OpenAPI.
 
 ## Conclusion
 
-This project serves as a learning-focused implementation of modern authentication standards. While it is
-fully structured, some advanced error handling or edge-case features may be omitted for clarity.
+This project serves as a learning-focused implementation of modern authentication standards.
+While it is fully structured, some error handling or edge-case features may be omitted or not taken into account, if
+some-one use this project as reference.
+Please do let me know what did I miss or which security principle did I forget to take into account.

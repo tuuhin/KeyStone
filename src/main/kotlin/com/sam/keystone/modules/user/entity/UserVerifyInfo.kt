@@ -1,6 +1,7 @@
 package com.sam.keystone.modules.user.entity
 
 import jakarta.persistence.*
+import java.time.Instant
 
 @Entity
 @Table(name = "user_verify_info_table")
@@ -17,6 +18,12 @@ class UserVerifyInfo(
 
     @Column(name = "is_verified", nullable = false)
     var isVerified: Boolean = false,
+
+    @Column(name = "pending_email", nullable = true)
+    var pendingEmail: String? = null,
+
+    @Column(name = "pending_email_expiry", nullable = true)
+    var pendingEmailExpiry: Instant? = null,
 
     @Column(name = "resend_email_key_hash", nullable = true)
     val resendKey: String? = null,

@@ -60,8 +60,13 @@ class JWTAuthFilterConfig(
 
         val user = repository.findUserById(result.userId) ?: throw RequestedUserNotFoundException()
 
-        // token is invalid now
+        // token is invalid as version don't match
         if (result.tokenVersion != user.tokenVersion) throw InvalidTokenVersionException()
+        // token is invalid as issues jwt is before password change
+        user.pWordUpdateAt?.let { updateInstant ->
+            if (result.issuedAt.isBefore(updateInstant))
+                throw InvalidTokenVersionException()
+        }
 
         val newAuth = UsernamePasswordAuthenticationToken.authenticated(
             user,

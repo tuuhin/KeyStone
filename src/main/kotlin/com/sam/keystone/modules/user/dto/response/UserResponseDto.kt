@@ -17,6 +17,9 @@ class UserResponseDto(
     @field:JsonProperty("created_at")
     val createdAt: Instant? = null,
 
+    @field:JsonProperty("updated_at")
+    val updatedAt: Instant? = null,
+
     @field:JsonProperty("is_verified")
     val isVerified: Boolean? = null,
 
